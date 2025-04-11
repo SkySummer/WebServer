@@ -7,16 +7,32 @@
 ```
 WebServer/
 ├── include/
+│   └── server.h
 ├── src/
+│   └── server.cpp
 ├── CMakeLists.txt
 ├── LICENSE
 ├── main.cpp
 └── README.md
 ```
 
+## 测试环境
+
+- 服务器
+  - Ubuntu 24.04.2 LTS
+  - g++ 13.3.0
+  - cmake 3.28.3
+
 ## 编译与运行方式
 
-依赖项：`g++`, `cmake (>= 3.30)`。
+依赖项：`g++`, `cmake (>= 3.13)`。
+
+```bash
+mkdir build && cd build
+cmake ..
+make -j
+./WebServer
+```
 
 ## 许可证
 
