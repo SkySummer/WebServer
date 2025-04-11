@@ -9,25 +9,22 @@
 
 constexpr int MAX_EVENTS = 1024; // epoll 支持的最大事件数
 
-// 设置文件描述符为非阻塞模式
 static int setNonBlocking(const int fd) {
     const int old = fcntl(fd, F_GETFL);
     return fcntl(fd, F_SETFL, old | O_NONBLOCK);
 }
 
-// 构造函数：初始化服务器并指定监听端口
-Server::Server(const int port) : port_(port) {
+Server::Server(const int port, const int thread_count)
+    : port_(port), thread_pool_(thread_count) {
     setupSocket();
     setupEpoll();
 }
 
-// 析构函数：关闭 socket 与 epoll 相关资源
 Server::~Server() {
     close(listen_fd_);
     close(epoll_fd_);
 }
 
-// 创建并配置 socket，绑定端口并监听连接
 void Server::setupSocket() {
     listen_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_fd_ == -1) {
@@ -63,7 +60,6 @@ void Server::setupSocket() {
     std::cout << "Server listening on port " << port_ << std::endl;
 }
 
-// 创建 epoll 实例并添加监听 socket
 void Server::setupEpoll() {
     epoll_fd_ = epoll_create1(0);
     if (epoll_fd_ == -1) {
@@ -78,8 +74,7 @@ void Server::setupEpoll() {
     epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd_, &ev);
 }
 
-// 主事件循环：等待事件并分发处理
-void Server::run() const {
+void Server::run() {
     while (true) {
         epoll_event events[MAX_EVENTS];
         const int n = epoll_wait(epoll_fd_, events, MAX_EVENTS, -1);
@@ -87,13 +82,12 @@ void Server::run() const {
             if (const int fd = events[i].data.fd; fd == listen_fd_) {
                 handleNewConnection();
             } else {
-                handleClientData(fd);
+                dispatchClient(fd);
             }
         }
     }
 }
 
-// 处理新客户端连接
 void Server::handleNewConnection() const {
     sockaddr_in client_addr{};
     socklen_t len = sizeof(client_addr);
@@ -115,7 +109,6 @@ void Server::handleNewConnection() const {
     std::cout << "Client connected, fd = " << client_fd << std::endl;
 }
 
-// 处理客户端发送的数据（简单解析请求路径，根据路径返回不同内容）
 void Server::handleClientData(const int client_fd) {
     // 用于存储从客户端接收到的数据
     char buf[4096];
@@ -172,7 +165,6 @@ void Server::handleClientData(const int client_fd) {
     write(client_fd, response.c_str(), response.size());
 }
 
-// 处理 GET 请求，根据路径返回不同的响应内容
 std::string Server::handleGET(const std::string& path) {
     if (path == "/") {
         return "Welcome to the C++ WebServer!";
@@ -183,7 +175,6 @@ std::string Server::handleGET(const std::string& path) {
     return "404 Not Found";
 }
 
-// 处理 POST 请求，读取请求体并返回内容
 std::string Server::handlePOST(const std::string& path, const std::string& request) {
     size_t body_start = request.find("\r\n\r\n");
     if (body_start == std::string::npos) {
@@ -197,4 +188,8 @@ std::string Server::handlePOST(const std::string& path, const std::string& reque
         return "Received POST data: " + body;
     }
     return "404 Not Found";
+}
+
+void Server::dispatchClient(const int client_fd) {
+    thread_pool_.enqueue([client_fd] { handleClientData(client_fd); });
 }

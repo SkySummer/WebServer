@@ -4,26 +4,22 @@
 
 ## 当前功能
 
-- 支持处理 `GET` 和 `POST` 请求
-- 根据不同路径返回不同的响应内容
-  - `/` : 欢迎页面
-  - `/hello` : 返回 `Hello, world!`
-  - 其他路径 : 返回 `404 Not Found`
-- 简单支持读取 `POST` 请求体
-- 处理 HTTP 状态码：
-  - 200 OK
-  - 405 Method Not Allowed（针对非 GET 请求）
-  - 404 Not Found（未匹配到路径）
-- 使用 `epoll` 实现高并发的网络连接处理
+- 支持 `GET` 和 `POST` 请求方法。
+- 支持处理多个 HTTP 状态码，例如 `200 OK`、`404 Not Found`、`405 Method Not Allowed`。
+- 支持简单的 URL 路由，根据不同路径返回不同的内容。
+- 采用 **多线程** 模型处理客户端请求，提高并发性能。
+- 实现 **非阻塞 I/O** 和 **epoll** 事件驱动模型，提升性能和响应速度。
 
 ## 项目结构
 
 ```
 WebServer/
 ├── include/
-│   └── server.h
+│   ├── server.h
+│   └── threadpool.h
 ├── src/
-│   └── server.cpp
+│   ├── server.cpp
+│   └── threadpool.cpp
 ├── CMakeLists.txt
 ├── LICENSE
 ├── main.cpp

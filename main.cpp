@@ -1,7 +1,7 @@
 #include "server.h"
 
 int main() {
-    const Server server(8080);
+    Server server(8080, 4);
     server.run();
     return 0;
 }
