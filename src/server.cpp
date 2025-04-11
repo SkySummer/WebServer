@@ -15,19 +15,19 @@ static int setNonBlocking(const int fd) {
     return fcntl(fd, F_SETFL, old | O_NONBLOCK);
 }
 
-// 构造函数：初始化服务器（创建 socket + epoll）
+// 构造函数：初始化服务器并指定监听端口
 Server::Server(const int port) : port_(port) {
     setupSocket();
     setupEpoll();
 }
 
-// 析构函数：关闭监听 socket 和 epoll 文件描述符
+// 析构函数：关闭 socket 与 epoll 相关资源
 Server::~Server() {
     close(listen_fd_);
     close(epoll_fd_);
 }
 
-// 创建 socket，绑定地址和端口，设置监听
+// 创建并配置 socket，绑定端口并监听连接
 void Server::setupSocket() {
     listen_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_fd_ == -1) {
@@ -63,7 +63,7 @@ void Server::setupSocket() {
     std::cout << "Server listening on port " << port_ << std::endl;
 }
 
-// 创建 epoll 实例并添加监听 socket 到 epoll 中
+// 创建 epoll 实例并添加监听 socket
 void Server::setupEpoll() {
     epoll_fd_ = epoll_create1(0);
     if (epoll_fd_ == -1) {
@@ -117,7 +117,9 @@ void Server::handleNewConnection() const {
 
 // 处理客户端发送的数据（简单解析请求路径，根据路径返回不同内容）
 void Server::handleClientData(const int client_fd) {
+    // 用于存储从客户端接收到的数据
     char buf[4096];
+
     if (const ssize_t n = read(client_fd, buf, sizeof(buf)); n == 0) {
         // 如果读到 0 字节，说明客户端关闭连接
         close(client_fd);
@@ -133,30 +135,66 @@ void Server::handleClientData(const int client_fd) {
 
     // 将读取的内容转换为 std::string 以便处理
     std::string request(buf);
-    std::string path = "/";
+    std::string method, path;
 
-    // 解析 HTTP 请求行中的路径部分（格式如：GET /path HTTP/1.1）
+    // 提取 HTTP 请求方法和请求路径
     if (const size_t method_end = request.find(' '); method_end != std::string::npos) {
-        if (const size_t path_end = request.find(' ', method_end + 1); path_end != std::string::npos) {
-            path = request.substr(method_end + 1, path_end - method_end - 1);
+        method = request.substr(0, method_end);
+
+        const size_t path_start = method_end + 1;
+        if (const size_t path_end = request.find(' ', path_start); path_end != std::string::npos) {
+            path = request.substr(path_start, path_end - path_start);
         }
     }
 
     // 根据路径构造不同的响应体内容
     std::string body;
-    if (path == "/") {
-        body = "Welcome to the C++ WebServer!";
-    } else if (path == "/hello") {
-        body = "Hello, world!";
+    std::string status = "200 OK";
+
+    // 根据方法和路径进行不同的处理
+    if (method == "GET") {
+        body = handleGET(path);
+    } else if (method == "POST") {
+        body = handlePOST(path, request);
     } else {
-        body = "404 Not Found";
+        status = "405 Method Not Allowed";
+        body = "Method Not Allowed";
     }
 
     // 发送固定的 HTTP 响应（状态行 + 头部 + 空行 + 内容）
-    const auto response =
-        "HTTP/1.1 200 OK\r\n"
+    const std::string response =
+        "HTTP/1.1 " + status + "\r\n"
         "Content-Type: text/plain\r\n"
         "Content-Length: " + std::to_string(body.size()) + "\r\n"
+        "Connection: close\r\n"
         "\r\n" + body;
+
     write(client_fd, response.c_str(), response.size());
+}
+
+// 处理 GET 请求，根据路径返回不同的响应内容
+std::string Server::handleGET(const std::string& path) {
+    if (path == "/") {
+        return "Welcome to the C++ WebServer!";
+    }
+    if (path == "/hello") {
+        return "Hello, world!";
+    }
+    return "404 Not Found";
+}
+
+// 处理 POST 请求，读取请求体并返回内容
+std::string Server::handlePOST(const std::string& path, const std::string& request) {
+    size_t body_start = request.find("\r\n\r\n");
+    if (body_start == std::string::npos) {
+        return "400 Bad Request";
+    }
+
+    body_start += 4; // 跳过空行部分
+    const std::string body = request.substr(body_start);
+
+    if (path == "/data") {
+        return "Received POST data: " + body;
+    }
+    return "404 Not Found";
 }

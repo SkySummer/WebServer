@@ -1,6 +1,8 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include <string>
+
 // Server 类用于创建一个基于 epoll 的多路复用 Web 服务器
 class Server {
 public:
@@ -24,11 +26,17 @@ private:
     // 创建 epoll 实例并添加监听 socket
     void setupEpoll();
 
-    // 处理新的客户端连接
+    // 处理新客户端连接
     void handleNewConnection() const;
 
-    // 静态函数：处理客户端发送的数据
+    // 处理客户端发送的数据
     static void handleClientData(int client_fd);
+
+    // 处理 GET 请求，根据路径返回不同的响应内容
+    static std::string handleGET(const std::string& path);
+
+    // 处理 POST 请求，读取请求体并返回内容
+    static std::string handlePOST(const std::string& path, const std::string& request);
 };
 
 #endif //SERVER_H
