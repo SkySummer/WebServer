@@ -1,6 +1,5 @@
 #include "server.h"
 
-#include <cstring>
 #include <fcntl.h>
 #include <iostream>
 #include <unistd.h>
@@ -116,11 +115,11 @@ void Server::handleNewConnection() const {
     std::cout << "Client connected, fd = " << client_fd << std::endl;
 }
 
-// 处理客户端发送的数据（目前忽略请求内容，直接响应固定内容）
+// 处理客户端发送的数据（简单解析请求路径，根据路径返回不同内容）
 void Server::handleClientData(const int client_fd) {
     char buf[4096];
     if (const ssize_t n = read(client_fd, buf, sizeof(buf)); n == 0) {
-        // 客户端关闭连接
+        // 如果读到 0 字节，说明客户端关闭连接
         close(client_fd);
         std::cout << "Client disconnected, fd = " << client_fd << std::endl;
         return;
@@ -132,12 +131,32 @@ void Server::handleClientData(const int client_fd) {
         return;
     }
 
+    // 将读取的内容转换为 std::string 以便处理
+    std::string request(buf);
+    std::string path = "/";
+
+    // 解析 HTTP 请求行中的路径部分（格式如：GET /path HTTP/1.1）
+    if (const size_t method_end = request.find(' '); method_end != std::string::npos) {
+        if (const size_t path_end = request.find(' ', method_end + 1); path_end != std::string::npos) {
+            path = request.substr(method_end + 1, path_end - method_end - 1);
+        }
+    }
+
+    // 根据路径构造不同的响应体内容
+    std::string body;
+    if (path == "/") {
+        body = "Welcome to the C++ WebServer!";
+    } else if (path == "/hello") {
+        body = "Hello, world!";
+    } else {
+        body = "404 Not Found";
+    }
+
     // 发送固定的 HTTP 响应（状态行 + 头部 + 空行 + 内容）
     const auto response =
         "HTTP/1.1 200 OK\r\n"
         "Content-Type: text/plain\r\n"
-        "Content-Length: 24\r\n"
-        "\r\n"
-        "Hello from C++ WebServer";
-    write(client_fd, response, strlen(response));
+        "Content-Length: " + std::to_string(body.size()) + "\r\n"
+        "\r\n" + body;
+    write(client_fd, response.c_str(), response.size());
 }
