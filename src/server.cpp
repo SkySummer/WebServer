@@ -135,6 +135,17 @@ void Server::disconnectClient(const int client_fd) {
     logger_.log(LogLevel::INFO, info, client_fd, "Client disconnected.");
 }
 
+void Server::requestCloseClient(const int client_fd) {
+    const std::string info = getClientInfo(client_fd);
+    std::lock_guard lock(close_mutex_);
+
+    if (close_list_.insert(client_fd).second) {
+        logger_.log(LogLevel::DEBUG, info, client_fd, "Added to close list.");
+    } else {
+        logger_.log(LogLevel::DEBUG, info, client_fd, "Already in close list, ignoring duplicate.");
+    }
+}
+
 void Server::handleNewConnection() {
     while (true) {
         sockaddr_in client_addr{};
@@ -142,8 +153,7 @@ void Server::handleNewConnection() {
         const int client_fd = accept(listen_fd_, reinterpret_cast<sockaddr*>(&client_addr), &len);
         if (client_fd == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // 无更多连接
-                break;
+                break; // 无更多连接
             }
             logger_.log(LogLevel::ERROR, "Failed to accept client connection.");
             throw std::runtime_error("Failed to accept client connection.");
@@ -169,26 +179,17 @@ void Server::handleNewConnection() {
     }
 }
 
-void Server::requestCloseClient(const int client_fd) {
-    const std::string info = getClientInfo(client_fd);
-    std::lock_guard lock(close_mutex_);
-
-    if (close_list_.insert(client_fd).second) {
-        logger_.log(LogLevel::DEBUG, info, client_fd, "Already in close list, ignoring duplicate.");
-    } else {
-        logger_.log(LogLevel::DEBUG, info, client_fd, "Added to close list.");
-    }
-}
-
 void Server::handleClientData(const int client_fd) {
     char buf[4096]; // 用于存储从客户端接收到的数据
-
     const ssize_t n = read(client_fd, buf, sizeof(buf));
+
     if (n == 0) {
         // 如果读到 0 字节，说明客户端关闭连接
         requestCloseClient(client_fd);
         return;
-    } else if (n < 0) {
+    }
+
+    if (n < 0) {
         if (errno == EBADF) {
             logger_.log(LogLevel::WARNING, getClientInfo(client_fd), client_fd,
                         "Read on invalid fd: already closed elsewhere.");
