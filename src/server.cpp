@@ -12,9 +12,6 @@ constexpr int MAX_EVENTS = 1024; // epoll 支持的最大事件数
 
 Server::Server(const int port, const int thread_count, Logger& logger)
     : port_(port), thread_pool_(thread_count, logger), logger_(logger) {
-    logger_.logDivider("Server init");
-    logger_.log(LogLevel::INFO, std::format("Thread pool started with {} threads.", thread_count));
-
     setupSocket();
     setupEpoll();
 }
@@ -218,12 +215,13 @@ void Server::handleClientData(const int client_fd) {
     // 根据路径构造不同的响应体内容
     std::string body;
     std::string status = "200 OK";
+    std::string content_type = "text/plain";
 
     // 根据方法和路径进行不同的处理
     if (method == "GET") {
         logger_.log(LogLevel::DEBUG, getClientInfo(client_fd), client_fd,
                     std::format("Handling GET for path: {}", path));
-        body = handleGET(path);
+        body = static_file_.serve(path, status, content_type);
     } else if (method == "POST") {
         logger_.log(LogLevel::DEBUG, getClientInfo(client_fd), client_fd,
                     std::format("Handling POST for path: {}", path));
@@ -231,29 +229,18 @@ void Server::handleClientData(const int client_fd) {
     } else {
         logger_.log(LogLevel::WARNING, getClientInfo(client_fd), client_fd,
                     std::format("Unsupported method: {} on path: {}", method, path));
-        status = "405 Method Not Allowed";
-        body = "Method Not Allowed";
+        body = StaticFile::respondWithError(405, status, content_type);
     }
 
     // 发送固定的 HTTP 响应（状态行 + 头部 + 空行 + 内容）
     const std::string response =
         "HTTP/1.1 " + status + "\r\n"
-        "Content-Type: text/plain\r\n"
+        "Content-Type: " + content_type + "\r\n"
         "Content-Length: " + std::to_string(body.size()) + "\r\n"
         "Connection: close\r\n"
         "\r\n" + body;
 
     write(client_fd, response.c_str(), response.size());
-}
-
-std::string Server::handleGET(const std::string& path) {
-    if (path == "/") {
-        return "Welcome to the C++ WebServer!";
-    }
-    if (path == "/hello") {
-        return "Hello, world!";
-    }
-    return "404 Not Found";
 }
 
 std::string Server::handlePOST(const std::string& path, const std::string& request) const {

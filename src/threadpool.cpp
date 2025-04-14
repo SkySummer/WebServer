@@ -7,6 +7,7 @@ ThreadPool::ThreadPool(const size_t thread_count, Logger& logger) : stop_(false)
     for (size_t i = 0; i < thread_count; ++i) {
         workers_.emplace_back([this, i] { this->workerLoop(); });
     }
+    logger_.log(LogLevel::INFO, std::format("Thread pool started with {} threads.", thread_count));
 }
 
 ThreadPool::~ThreadPool() {

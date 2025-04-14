@@ -15,6 +15,8 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
         "${SRC_DIR}/*.cpp"
 )
 
+add_compile_definitions(STATIC_ROOT_PATH=${CMAKE_SOURCE_DIR}/static)
+
 # 定义可执行文件目标
 add_executable(WebServer
         main.cpp

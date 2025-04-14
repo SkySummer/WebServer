@@ -6,6 +6,7 @@
 int main() {
     try {
         Logger logger(LogLevel::DEBUG);
+        logger.logDivider("Server init");
         Server server(8080, 4, logger);
         server.run();
     } catch (const std::exception& e) {

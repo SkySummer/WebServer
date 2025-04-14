@@ -8,6 +8,7 @@
 
 #include "address.h"
 #include "logger.h"
+#include "static_file.h"
 
 class Server {
 public:
@@ -33,6 +34,8 @@ private:
     std::unordered_set<int> close_list_; // 客户端关闭列表
     std::mutex close_mutex_;
 
+    StaticFile static_file_{logger_}; // 静态文件目录
+
     // 创建并配置 socket，绑定端口并监听连接
     void setupSocket();
 
@@ -53,9 +56,6 @@ private:
 
     // 处理客户端发送的数据
     void handleClientData(int client_fd);
-
-    // 处理 GET 请求，根据路径返回不同的响应内容
-    [[nodiscard]] static std::string handleGET(const std::string& path);
 
     // 处理 POST 请求，读取请求体并返回内容
     [[nodiscard]] std::string handlePOST(const std::string& path, const std::string& request) const;
