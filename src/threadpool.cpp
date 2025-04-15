@@ -1,11 +1,9 @@
 #include "threadpool.h"
 
-#include <iostream>
-
 ThreadPool::ThreadPool(const size_t thread_count, Logger& logger) : stop_(false), logger_(logger) {
     // 创建并启动指定数量的线程
     for (size_t i = 0; i < thread_count; ++i) {
-        workers_.emplace_back([this, i] { this->workerLoop(); });
+        workers_.emplace_back([this, i] { this->workerLoop(i); });
     }
     logger_.log(LogLevel::INFO, std::format("Thread pool started with {} threads.", thread_count));
 }
@@ -33,7 +31,7 @@ void ThreadPool::enqueue(std::function<void()> task) {
     condition_.notify_one();
 }
 
-void ThreadPool::workerLoop() {
+void ThreadPool::workerLoop(size_t thread_id) {
     while (!stop_) {
         std::function<void()> task;
 
@@ -45,6 +43,7 @@ void ThreadPool::workerLoop() {
 
             // 如果已经停止且没有任务，退出线程
             if (stop_ && tasks_.empty()) {
+                logger_.log(LogLevel::DEBUG, std::format("Thread {} exiting.", thread_id));
                 return;
             }
 
@@ -57,10 +56,9 @@ void ThreadPool::workerLoop() {
         try {
             task();
         } catch (const std::exception& e) {
-            logger_.log(LogLevel::ERROR, std::string("Task exception") + e.what());
-            std::cerr << "Exception in thread pool task: " << e.what() << std::endl;
+            logger_.log(LogLevel::ERROR, std::format("Thread {} exception: {}", thread_id, e.what()));
         } catch (...) {
-            std::cerr << "Unknown exception in thread pool task." << std::endl;
+            logger_.log(LogLevel::ERROR, std::format("Thread {} unknown exception.", thread_id));
         }
     }
 }

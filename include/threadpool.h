@@ -31,7 +31,7 @@ private:
     Logger& logger_; // 日志
 
     // 工作线程主循环函数
-    void workerLoop();
+    void workerLoop(size_t thread_id);
 };
 
 #endif //THREADPOOL_H
