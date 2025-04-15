@@ -30,15 +30,15 @@ void Logger::log(const LogLevel level, const std::string& message) {
         return;
     }
 
-    std::lock_guard lock(mutex_);
-
     const std::string time = currentTime();
+
+    std::lock_guard lock(mutex_);
 
     // 写入日志格式：[YYYY-MM-DD HH:MM:SS] [LEVEL] message
     file_ << std::format("[{}] [{}] {}", time, logLevelToString(level), message) << std::endl;
 }
 
-void Logger::log(const LogLevel level, const std::string& address, const int fd, const std::string& message) {
+void Logger::log(const LogLevel level, const Address& address, const std::string& message) {
     if (level < min_level_ || !file_.is_open()) {
         return;
     }
@@ -50,16 +50,18 @@ void Logger::log(const LogLevel level, const std::string& address, const int fd,
         return;
     }
 
+    const std::string time = currentTime();
+    const std::string client_info = address.toString();
+    const int client_fd = address.fd();
+
     std::lock_guard lock(mutex_);
 
-    const std::string time = currentTime();
-
-    if (fd != -1) {
+    if (client_fd != -1) {
         file_ << std::format("[{}] [{}] [Client {}] [fd: {}] {}",
-                             time, logLevelToString(level), address, fd, message) << std::endl;
+                             time, logLevelToString(level), client_info, client_fd, message) << std::endl;
     } else {
         file_ << std::format("[{}] [{}] [Client {}] {}",
-                             time, logLevelToString(level), address, message) << std::endl;
+                             time, logLevelToString(level), client_info, message) << std::endl;
     }
 }
 

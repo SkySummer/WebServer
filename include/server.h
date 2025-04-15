@@ -64,7 +64,7 @@ private:
     void dispatchClient(int client_fd);
 
     // 获取客户端信息
-    [[nodiscard]] std::string getClientInfo(int client_fd);
+    [[nodiscard]] const Address& getClientInfo(int client_fd);
 
     // 设置为非阻塞模式
     static int setNonBlocking(int fd);

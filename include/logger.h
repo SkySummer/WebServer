@@ -6,6 +6,8 @@
 #include <mutex>
 #include <string>
 
+#include "address.h"
+
 enum class LogLevel {
     DEBUG,
     INFO,
@@ -23,7 +25,7 @@ public:
 
     // 写入一条日志信息
     void log(LogLevel level, const std::string& message);
-    void log(LogLevel level, const std::string& address, int fd, const std::string& message);
+    void log(LogLevel level, const Address& address, const std::string& message);
 
     // 写入一条分隔符
     void logDivider(const std::string& title, LogLevel level = LogLevel::INFO);
