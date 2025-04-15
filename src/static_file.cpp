@@ -51,6 +51,12 @@ std::string StaticFile::serve(const std::string& path, const Address& info, std:
         return respondWithError(403, status, content_type);
     }
 
+    if (auto cached = readFromCache(full_path, status, content_type, info)) {
+        // 从缓存中取文件
+        logger_.log(LogLevel::DEBUG, info, "Static file served from cache.");
+        return *cached;
+    }
+
     std::ifstream file(full_path, std::ios::binary);
     if (!file.is_open()) {
         // 找不到文件，返回 404
@@ -58,13 +64,17 @@ std::string StaticFile::serve(const std::string& path, const Address& info, std:
         return respondWithError(404, status, content_type);
     }
 
-    logger_.log(LogLevel::DEBUG, info, "Static file found.");
-
     std::ostringstream ss;
     ss << file.rdbuf();
     status = "200 OK";
+    const std::string content = ss.str();
     content_type = getMimeType(full_path);
-    return ss.str();
+
+    // 存入缓存
+    updateCache(full_path, content, content_type);
+    logger_.log(LogLevel::DEBUG, info, "Static file loaded and cached.");
+
+    return content;
 }
 
 std::string StaticFile::respondWithError(const int code, std::string& status, std::string& content_type) {
@@ -94,6 +104,31 @@ std::string StaticFile::getMimeType(const std::filesystem::path& path) {
     if (ext.ends_with(".jpg") || ext.ends_with(".jpeg")) { return "image/jpeg"; }
     if (ext.ends_with(".txt")) { return "text/plain"; }
     return "application/octet-stream";
+}
+
+std::optional<std::string> StaticFile::readFromCache(const std::filesystem::path& path, std::string& status,
+                                                     std::string& content_type, const Address& info) const {
+    std::lock_guard lock(cache_mutex_);
+    if (const auto it = cache_.find(path); it != cache_.end()) {
+        if (it->second.last_modified == last_write_time(path)) {
+            logger_.log(LogLevel::DEBUG, info, std::format("Cache hit: {}", path.string()));
+            status = "200 OK";
+            content_type = it->second.content_type;
+            return it->second.content;
+        }
+        logger_.log(LogLevel::DEBUG, info, std::format("Cache stale: {}", path.string()));
+    } else {
+        logger_.log(LogLevel::DEBUG, info, std::format("Cache miss: {}", path.string()));
+    }
+    return std::nullopt;
+}
+
+void StaticFile::updateCache(const std::filesystem::path& path, const std::string& content,
+                             const std::string& content_type) const {
+    CacheEntry entry = {content, last_write_time(path), content_type};
+
+    std::lock_guard lock(cache_mutex_);
+    cache_[path] = std::move(entry);
 }
 
 const HttpError& HttpError::get(const int code) {
