@@ -26,24 +26,23 @@ namespace {
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
 
-#include <filesystem>
 #include <fstream>
 #include <unordered_map>
 
-StaticFile::StaticFile(Logger& logger) : logger_(logger) {
-#ifdef STATIC_ROOT_PATH
-    root_ = STR(STATIC_ROOT_PATH);
+StaticFile::StaticFile(Logger& logger, const std::string_view relative_path) : logger_(logger) {
+#ifdef ROOT_PATH
+    std::filesystem::path root_path = STR(ROOT_PATH);
 #else
-    root_ = "./static";
+    std::filesystem::path root_path = std::filesystem::current_path();
 #endif
 
-    root_ = std::filesystem::weakly_canonical(root_).string();
-    logger_.log(LogLevel::INFO, std::format("StaticFile initialized. Root: {}", root_));
+    root_ = weakly_canonical(root_path / relative_path);
+    logger_.log(LogLevel::INFO, std::format("StaticFile initialized. Root: {}", root_.string()));
 }
 
 std::string StaticFile::serve(const std::string& path, std::string& status, std::string& content_type) const {
-    std::string full_path = getFilePath(path);
-    logger_.log(LogLevel::DEBUG, std::format("Request for static file: {}", full_path));
+    std::filesystem::path full_path = getFilePath(path);
+    logger_.log(LogLevel::DEBUG, std::format("Request for static file: {}", full_path.string()));
 
     if (!isPathSafe(full_path)) {
         return respondWithError(403, status, content_type);
@@ -54,7 +53,7 @@ std::string StaticFile::serve(const std::string& path, std::string& status, std:
         return respondWithError(404, status, content_type);
     }
 
-    logger_.log(LogLevel::DEBUG, std::format("Static file found: {}", full_path));
+    logger_.log(LogLevel::DEBUG, std::format("Static file found: {}", full_path.string()));
 
     std::ostringstream ss;
     ss << file.rdbuf();
@@ -72,22 +71,23 @@ std::string StaticFile::respondWithError(const int code, std::string& status, st
     return std::format(ERROR_HTML_TEMPLATE, code, status_text, message);
 }
 
-bool StaticFile::isPathSafe(const std::string& path) const {
-    return std::filesystem::weakly_canonical(path).string().starts_with(root_);
+bool StaticFile::isPathSafe(const std::filesystem::path& path) const {
+    return weakly_canonical(path).string().starts_with(root_.string());
 }
 
-std::string StaticFile::getFilePath(const std::string& path) const {
+std::filesystem::path StaticFile::getFilePath(const std::string& path) const {
     const std::string clean_path = path == "/" ? "index.html" : path.substr(1);
-    return std::filesystem::path(root_) / clean_path;
+    return root_ / clean_path;
 }
 
-std::string StaticFile::getMimeType(const std::string& path) {
-    if (path.ends_with(".html")) { return "text/html"; }
-    if (path.ends_with(".css")) { return "text/css"; }
-    if (path.ends_with(".js")) { return "application/javascript"; }
-    if (path.ends_with(".png")) { return "image/png"; }
-    if (path.ends_with(".jpg") || path.ends_with(".jpeg")) { return "image/jpeg"; }
-    if (path.ends_with(".txt")) { return "text/plain"; }
+std::string StaticFile::getMimeType(const std::filesystem::path& path) {
+    const std::string ext = path.string();
+    if (ext.ends_with(".html")) { return "text/html"; }
+    if (ext.ends_with(".css")) { return "text/css"; }
+    if (ext.ends_with(".js")) { return "application/javascript"; }
+    if (ext.ends_with(".png")) { return "image/png"; }
+    if (ext.ends_with(".jpg") || ext.ends_with(".jpeg")) { return "image/jpeg"; }
+    if (ext.ends_with(".txt")) { return "text/plain"; }
     return "application/octet-stream";
 }
 

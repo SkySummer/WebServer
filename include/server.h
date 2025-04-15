@@ -34,7 +34,7 @@ private:
     std::unordered_set<int> close_list_; // 客户端关闭列表
     std::mutex close_mutex_;
 
-    StaticFile static_file_{logger_}; // 静态文件目录
+    StaticFile static_file_{logger_, "./static"}; // 静态文件目录
 
     // 创建并配置 socket，绑定端口并监听连接
     void setupSocket();
