@@ -217,7 +217,7 @@ void Server::handleClientData(const int client_fd) {
     // 根据方法和路径进行不同的处理
     if (method == "GET") {
         logger_.log(LogLevel::DEBUG, info, std::format("Handling GET for path: {}", path));
-        body = static_file_.serve(path, status, content_type);
+        body = static_file_.serve(path, info, status, content_type);
     } else if (method == "POST") {
         logger_.log(LogLevel::DEBUG, info, std::format("Handling POST for path: {}", path));
         body = handlePOST(path, request);

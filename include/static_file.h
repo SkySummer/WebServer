@@ -15,9 +15,10 @@ struct HttpError {
 
 class StaticFile {
 public:
-    explicit StaticFile(Logger& logger, std::string_view relative_path);
+    explicit StaticFile(Logger& logger, std::string_view relative_path = "./static");
 
-    [[nodiscard]] std::string serve(const std::string& path, std::string& status, std::string& content_type) const;
+    [[nodiscard]] std::string serve(const std::string& path, const Address& info, std::string& status,
+                                    std::string& content_type) const;
 
     [[nodiscard]] static std::string respondWithError(int code, std::string& status, std::string& content_type);
 

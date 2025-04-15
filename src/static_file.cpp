@@ -40,20 +40,25 @@ StaticFile::StaticFile(Logger& logger, const std::string_view relative_path) : l
     logger_.log(LogLevel::INFO, std::format("StaticFile initialized. Root: {}", root_.string()));
 }
 
-std::string StaticFile::serve(const std::string& path, std::string& status, std::string& content_type) const {
+std::string StaticFile::serve(const std::string& path, const Address& info, std::string& status,
+                              std::string& content_type) const {
     std::filesystem::path full_path = getFilePath(path);
-    logger_.log(LogLevel::DEBUG, std::format("Request for static file: {}", full_path.string()));
+    logger_.log(LogLevel::DEBUG, info, std::format("Request for static file: {}", full_path.string()));
 
     if (!isPathSafe(full_path)) {
+        // 路径不安全，返回 403
+        logger_.log(LogLevel::DEBUG, info, "Path is not safe, return 403.");
         return respondWithError(403, status, content_type);
     }
 
     std::ifstream file(full_path, std::ios::binary);
     if (!file.is_open()) {
+        // 找不到文件，返回 404
+        logger_.log(LogLevel::DEBUG, info, "Static file not found, return 404.");
         return respondWithError(404, status, content_type);
     }
 
-    logger_.log(LogLevel::DEBUG, std::format("Static file found: {}", full_path.string()));
+    logger_.log(LogLevel::DEBUG, info, "Static file found.");
 
     std::ostringstream ss;
     ss << file.rdbuf();
