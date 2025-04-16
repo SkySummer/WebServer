@@ -6,6 +6,7 @@
 #include <unordered_map>
 
 #include "utils/mime_type.h"
+#include "utils/url.h"
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
@@ -46,7 +47,9 @@ StaticFile::StaticFile(Logger& logger, const std::string_view relative_path) : l
 
 std::string StaticFile::serve(const std::string& path, const Address& info, std::string& status,
                               std::string& content_type) const {
-    std::filesystem::path full_path = getFilePath(path);
+    const std::string decoded_path = Url::decode(path);
+    std::filesystem::path full_path = getFilePath(decoded_path);
+
     logger_.log(LogLevel::DEBUG, info, std::format("Request for static file: {}", full_path.string()));
 
     if (!isPathSafe(full_path)) {
