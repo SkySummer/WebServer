@@ -88,7 +88,7 @@ std::string StaticFile::respondWithError(const int code, std::string& status, st
     const auto& [status_text, message] = HttpError::get(code);
 
     status = std::format("{} {}", code, status_text);
-    content_type = "text/html";
+    content_type = "text/html; charset=UTF-8";
 
     return std::format(ERROR_HTML_TEMPLATE, code, status_text, message);
 }

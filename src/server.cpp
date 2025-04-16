@@ -222,7 +222,7 @@ void Server::handleClientData(const int client_fd) {
     // 根据路径构造不同的响应体内容
     std::string body;
     std::string status = "200 OK";
-    std::string content_type = "text/plain";
+    std::string content_type = "text/plain; charset=UTF-8";
 
     // 根据方法和路径进行不同的处理
     if (method == "GET") {
