@@ -17,14 +17,16 @@
 
 ```
 WebServer/
-├── docs/                 # 项目的文档目录，包含所有相关文档
-├── include/              # 存放项目的头文件
-├── src/                  # 存放项目的源代码文件
-├── static/               # 存放静态文件（HTML、CSS、JS、图片等）
-├── CMakeLists.txt        # CMake 配置文件，用于构建项目
-├── LICENSE               # 项目的开源许可证文件
-├── main.cpp              # 主程序入口
-└── README.md             # 项目的自述文件，包含项目信息、使用指南等
+├── docs/               # 项目的文档目录
+│   └── utils           # 工具类相关的文档
+├── include/            # 存放项目的头文件
+│   └── utils           # 工具类头文件
+├── src/                # 存放项目的源代码文件
+├── static/             # 存放静态文件（HTML、CSS、JS、图片等）
+├── CMakeLists.txt      # CMake 配置文件，用于构建项目
+├── LICENSE             # 项目的开源许可证文件
+├── main.cpp            # 主程序入口
+└── README.md           # 项目的自述文件，包含项目信息、使用指南等
 ```
 
 ## 🖥️ 测试环境
