@@ -5,6 +5,8 @@
 #include <ranges>
 #include <unordered_map>
 
+#include "utils/mime_type.h"
+
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
 
@@ -70,7 +72,7 @@ std::string StaticFile::serve(const std::string& path, const Address& info, std:
     ss << file.rdbuf();
     status = "200 OK";
     const std::string content = ss.str();
-    content_type = getMimeType(full_path);
+    content_type = MimeType::get(full_path);
 
     // 存入缓存
     updateCache(full_path, content, content_type);
@@ -95,17 +97,6 @@ bool StaticFile::isPathSafe(const std::filesystem::path& path) const {
 std::filesystem::path StaticFile::getFilePath(const std::string& path) const {
     const std::string clean_path = path == "/" ? "index.html" : path.substr(1);
     return root_ / clean_path;
-}
-
-std::string StaticFile::getMimeType(const std::filesystem::path& path) {
-    const std::string ext = path.string();
-    if (ext.ends_with(".html")) { return "text/html"; }
-    if (ext.ends_with(".css")) { return "text/css"; }
-    if (ext.ends_with(".js")) { return "application/javascript"; }
-    if (ext.ends_with(".png")) { return "image/png"; }
-    if (ext.ends_with(".jpg") || ext.ends_with(".jpeg")) { return "image/jpeg"; }
-    if (ext.ends_with(".txt")) { return "text/plain"; }
-    return "application/octet-stream";
 }
 
 std::optional<std::string> StaticFile::readFromCache(const std::filesystem::path& path, std::string& status,

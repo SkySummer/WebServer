@@ -40,8 +40,6 @@ private:
 
     [[nodiscard]] std::filesystem::path getFilePath(const std::string& path) const;
 
-    [[nodiscard]] static std::string getMimeType(const std::filesystem::path& path);
-
     std::optional<std::string> readFromCache(const std::filesystem::path& path, std::string& status,
                                              std::string& content_type, const Address& info) const;
 
