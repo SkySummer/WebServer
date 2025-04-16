@@ -92,26 +92,29 @@ void Server::run() {
 }
 
 void Server::processCloseList() {
-    std::vector<int> to_close;
+    while (true) {
+        int fd;
+        {
+            std::lock_guard lock(close_mutex_);
+            if (close_list_.empty()) { break; }
+            fd = *close_list_.begin();
+        }
 
-    {
-        std::lock_guard lock(close_mutex_);
-        to_close.assign(close_list_.begin(), close_list_.end());
-        close_list_.clear();
-    }
-
-    for (const int fd : to_close) {
         disconnectClient(fd);
+
+        std::lock_guard lock(close_mutex_);
+        close_list_.erase(fd);
     }
 }
 
 void Server::disconnectClient(const int client_fd) {
+    Address info;
     {
         std::lock_guard lock(clients_mutex_);
-        if (!clients_.contains(client_fd)) { return; }
+        const auto it = clients_.find(client_fd);
+        if (it == clients_.end()) { return; }
+        info = it->second;
     }
-
-    const Address info = getClientInfo(client_fd);
 
     // 从 epoll 中移除 fd，防止后续再触发事件
     if (epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, client_fd, nullptr) == -1) {
@@ -175,6 +178,13 @@ void Server::handleNewConnection() {
 }
 
 void Server::handleClientData(const int client_fd) {
+    {
+        std::scoped_lock lock(clients_mutex_, close_mutex_);
+        if (!clients_.contains(client_fd) || close_list_.contains(client_fd)) {
+            return;
+        }
+    }
+
     char buf[4096]; // 用于存储从客户端接收到的数据
     const ssize_t n = read(client_fd, buf, sizeof(buf));
     const Address info = getClientInfo(client_fd);
