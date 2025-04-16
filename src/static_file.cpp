@@ -1,5 +1,13 @@
 #include "static_file.h"
 
+#include <algorithm>
+#include <fstream>
+#include <ranges>
+#include <unordered_map>
+
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
 namespace {
     constexpr auto ERROR_HTML_TEMPLATE = R"(
 <!DOCTYPE html>
@@ -22,12 +30,6 @@ namespace {
 </html>
 )";
 }
-
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
-
-#include <fstream>
-#include <unordered_map>
 
 StaticFile::StaticFile(Logger& logger, const std::string_view relative_path) : logger_(logger) {
 #ifdef ROOT_PATH
@@ -109,26 +111,41 @@ std::string StaticFile::getMimeType(const std::filesystem::path& path) {
 std::optional<std::string> StaticFile::readFromCache(const std::filesystem::path& path, std::string& status,
                                                      std::string& content_type, const Address& info) const {
     std::lock_guard lock(cache_mutex_);
-    if (const auto it = cache_.find(path); it != cache_.end()) {
-        if (it->second.last_modified == last_write_time(path)) {
-            logger_.log(LogLevel::DEBUG, info, std::format("Cache hit: {}", path.string()));
-            status = "200 OK";
-            content_type = it->second.content_type;
-            return it->second.content;
-        }
-        logger_.log(LogLevel::DEBUG, info, std::format("Cache stale: {}", path.string()));
-    } else {
+    const auto it = cache_.find(path);
+
+    if (it == cache_.end()) {
         logger_.log(LogLevel::DEBUG, info, std::format("Cache miss: {}", path.string()));
+        return std::nullopt;
     }
-    return std::nullopt;
+
+    if (!exists(path)) {
+        logger_.log(LogLevel::DEBUG, info, std::format("Cache erase (file missing): {}", path.string()));
+        cache_.erase(it);
+        return std::nullopt;
+    }
+
+    if (it->second.last_modified != last_write_time(path)) {
+        logger_.log(LogLevel::DEBUG, info, std::format("Cache stale: {}", path.string()));
+        return std::nullopt;
+    }
+
+    logger_.log(LogLevel::DEBUG, info, std::format("Cache hit: {}", path.string()));
+    status = "200 OK";
+    content_type = it->second.content_type;
+    return it->second.content;
 }
 
 void StaticFile::updateCache(const std::filesystem::path& path, const std::string& content,
                              const std::string& content_type) const {
-    CacheEntry entry = {content, last_write_time(path), content_type};
+    try {
+        CacheEntry entry = {content, last_write_time(path), content_type};
 
-    std::lock_guard lock(cache_mutex_);
-    cache_[path] = std::move(entry);
+        std::lock_guard lock(cache_mutex_);
+        cache_[path] = std::move(entry);
+    } catch (const std::filesystem::filesystem_error& e) {
+        // 极端文件丢失情况
+        logger_.log(LogLevel::ERROR, std::format("updateCache failed: {} ({})", e.what(), path.string()));
+    }
 }
 
 const HttpError& HttpError::get(const int code) {
