@@ -1,0 +1,89 @@
+Checks: >
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  cppcoreguidelines-*,
+  google-*,
+  -google-runtime-references,
+  misc-unused-parameters,
+  portability-*,
+  -modernize-use-trailing-return-type,
+  -readability-implicit-bool-conversion,
+  -bugprone-easily-swappable-parameters
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*'
+FormatStyle: file
+ExtraArgsBefore: ['-std=c++20']
+
+CheckOptions:
+  ## ===== 命名规范 Naming Conventions =====
+
+  # 变量
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case  # 变量：小写
+  - key: readability-identifier-naming.GlobalVariableCase
+    value: lower_case  # 全局变量：小写
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case  # 命名空间：小写
+  - key: readability-identifier-naming.PrivateMemberCase
+    value: lower_case  # 私有成员变量：小写
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: _           # 私有成员变量后缀
+  - key: readability-identifier-naming.StaticMemberCase
+    value: lower_case  # 静态成员变量：小写
+
+  # 常量
+  - key: readability-identifier-naming.ConstexprCase
+    value: UPPER_CASE  # constexpr 常量：大写
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: UPPER_CASE  # 全局常量：大写
+  - key: readability-identifier-naming.MemberConstantCase
+    value: UPPER_CASE  # 类成员常量：大写
+  - key: readability-identifier-naming.GlobalConstantMacroCase
+    value: UPPER_CASE  # 宏常量：大写
+  - key: readability-identifier-naming.MemberConstantMacroCase
+    value: UPPER_CASE  # 类成员宏常量：大写
+  - key: readability-identifier-naming.EnumConstantCase
+    value: UPPER_CASE  # 枚举常量：大写
+  - key: readability-identifier-naming.LocalConstantCase
+    value: lower_case  # 局部常量：小写
+
+  # 类型与函数命名
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase   # 类：大驼峰
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase   # 枚举：大驼峰
+  - key: readability-identifier-naming.TypedefCase
+    value: CamelCase   # 类型定义：大驼峰
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack   # 函数：小驼峰
+  - key: readability-identifier-naming.MethodCase
+    value: camelBack   # 成员函数：小驼峰
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case  # 函数参数：小写
+  - key: readability-identifier-naming.IgnoreConstParameter
+    value: true        # 忽略常量参数的命名规则
+
+  # 主函数及类似函数命名
+  - key: readability-identifier-naming.IgnoreMainLikeFunctions
+    value: true
+
+  ## ===== 可读性与复杂度限制 Readability & Complexity =====
+
+  - key: readability-function-cognitive-complexity.Threshold
+    value: '25'        # 单个函数的最大认知复杂度
+
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: '1'         # 控制单行短语句要求强制使用花括号
+
+  ## ===== 现代化建议 Modernize Checks =====
+
+  - key: modernize-loop-convert.MaxCopySize
+    value: '16'        # 判断循环中变量是否适合用范围 for 替代
+
+  - key: modernize-use-nullptr.NullMacros
+    value: 'NULL'      # 识别哪些宏应被替换为 nullptr

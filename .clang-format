@@ -1,0 +1,42 @@
+BasedOnStyle: Google
+Standard: c++20
+
+# 排版与对齐
+UseTab: Never
+IndentWidth: 4
+TabWidth: 4
+AccessModifierOffset: -4
+ColumnLimit: 120
+NamespaceIndentation: All
+
+# 空格与括号
+DerivePointerAlignment: false
+PointerAlignment: Left
+BreakBeforeBraces: Attach
+SpacesInAngles: Never
+SpaceBeforeParens: ControlStatements
+
+# 函数与控制流格式
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+
+# 模板与宏
+AlwaysBreakTemplateDeclarations: Yes
+
+# 文件
+InsertNewlineAtEOF: true
+MaxEmptyLinesToKeep: 1
+
+# 头文件
+SortIncludes: CaseSensitive
+IncludeIsMainRegex: ''
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<.*\.h>'
+    Priority: 2
+  - Regex: '^<.*'
+    Priority: 1
+  - Regex: '^".*'
+    Priority: 3
+  - Regex: '.*'
+    Priority: 4
