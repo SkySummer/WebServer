@@ -6,6 +6,7 @@
 #include <queue>
 #include <thread>
 #include <vector>
+
 #include "logger.h"
 
 // 简单的线程池实现：用于将任务分发给固定数量的线程执行
@@ -17,21 +18,26 @@ public:
     // 析构函数：停止所有线程并回收资源
     ~ThreadPool();
 
+    ThreadPool(const ThreadPool&) = delete;
+    ThreadPool& operator=(const ThreadPool&) = delete;
+    ThreadPool(ThreadPool&&) = delete;
+    ThreadPool& operator=(ThreadPool&&) = delete;
+
     // 提交一个任务给线程池执行
     void enqueue(std::function<void()> task);
 
 private:
-    std::vector<std::thread> workers_; // 工作线程列表
+    std::vector<std::thread> workers_;  // 工作线程列表
     std::atomic<bool> stop_;
 
-    std::queue<std::function<void()>> tasks_; // 任务队列
+    std::queue<std::function<void()>> tasks_;  // 任务队列
     std::mutex tasks_mutex_;
     std::condition_variable condition_;
 
-    Logger& logger_; // 日志
+    Logger& logger_;  // 日志
 
     // 工作线程主循环函数
     void workerLoop(size_t thread_id);
 };
 
-#endif //THREADPOOL_H
+#endif  // THREADPOOL_H

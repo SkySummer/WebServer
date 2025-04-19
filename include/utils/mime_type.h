@@ -3,12 +3,11 @@
 
 #include <algorithm>
 #include <filesystem>
-#include <ranges>
 #include <string>
 #include <unordered_map>
 
 namespace detail {
-    inline const std::unordered_map<std::string_view, std::string> mime_map = {
+    inline const std::unordered_map<std::string_view, std::string> MIME_MAP = {
         {".html", "text/html; charset=UTF-8"},
         {".htm", "text/html; charset=UTF-8"},
         {".css", "text/css; charset=UTF-8"},
@@ -35,25 +34,23 @@ namespace detail {
         {".woff2", "font/woff2"},
         {".ttf", "font/ttf"},
         {".otf", "font/otf"},
-        {".eot", "application/vnd.ms-fontobject"}
+        {".eot", "application/vnd.ms-fontobject"},
     };
 
-    inline std::string getMime(const std::filesystem::path& path) {
+    [[nodiscard]] inline std::string getMime(const std::filesystem::path& path) {
         std::string ext = path.extension().string();
         std::ranges::transform(ext, ext.begin(), tolower);
 
-        if (const auto it = mime_map.find(ext); it != mime_map.end()) {
-            return it->second;
+        if (const auto mime_iter = MIME_MAP.find(ext); mime_iter != MIME_MAP.end()) {
+            return mime_iter->second;
         }
         return "application/octet-stream";
     }
-}
+}  // namespace detail
 
 class MimeType {
 public:
-    [[nodiscard]] static std::string get(const std::filesystem::path& path) {
-        return detail::getMime(path);
-    }
+    [[nodiscard]] static std::string get(const std::filesystem::path& path) { return detail::getMime(path); }
 };
 
-#endif //MIME_TYPE_H
+#endif  // MIME_TYPE_H

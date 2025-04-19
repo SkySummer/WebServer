@@ -3,13 +3,14 @@
 
 #include <cstdint>
 #include <string>
+
 #include <netinet/in.h>
 
 class Address {
 public:
     Address() = default;
-    Address(std::string ip, uint16_t port, int fd = -1);
-    explicit Address(const sockaddr_in& addr, int fd = -1);
+    Address(std::string ip_address, uint16_t port, int conn_fd = -1);
+    explicit Address(const sockaddr_in& addr, int conn_fd = -1);
 
     [[nodiscard]] std::string ip() const;
     [[nodiscard]] uint16_t port() const;
@@ -25,4 +26,4 @@ private:
     int fd_{-1};
 };
 
-#endif //ADDRESS_H
+#endif  // ADDRESS_H

@@ -1,5 +1,7 @@
 #include "threadpool.h"
 
+#include <format>
+
 ThreadPool::ThreadPool(const size_t thread_count, Logger& logger) : stop_(false), logger_(logger) {
     // 创建并启动指定数量的线程
     for (size_t i = 0; i < thread_count; ++i) {

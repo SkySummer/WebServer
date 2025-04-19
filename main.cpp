@@ -5,12 +5,15 @@
 
 int main() {
     try {
+        constexpr uint16_t port = 8080;
+        constexpr size_t thread_count = 4;
+
         Logger logger(LogLevel::DEBUG);
         logger.logDivider("Server init");
-        Server server(8080, 4, logger);
+        Server server(port, thread_count, logger);
         server.run();
     } catch (const std::exception& e) {
-        std::cerr << "Server crashed: " << e.what() << std::endl;
+        std::cerr << "Server crashed: " << e.what() << '\n';
         return 1;
     }
     return 0;

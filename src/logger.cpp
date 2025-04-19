@@ -57,11 +57,12 @@ void Logger::log(const LogLevel level, const Address& address, const std::string
     std::lock_guard lock(mutex_);
 
     if (client_fd != -1) {
-        file_ << std::format("[{}] [{}] [Client {}] [fd: {}] {}",
-                             time, logLevelToString(level), client_info, client_fd, message) << std::endl;
+        file_ << std::format("[{}] [{}] [Client {}] [fd: {}] {}", time, logLevelToString(level), client_info, client_fd,
+                             message)
+              << std::endl;
     } else {
-        file_ << std::format("[{}] [{}] [Client {}] {}",
-                             time, logLevelToString(level), client_info, message) << std::endl;
+        file_ << std::format("[{}] [{}] [Client {}] {}", time, logLevelToString(level), client_info, message)
+              << std::endl;
     }
 }
 
@@ -100,16 +101,16 @@ void Logger::rotateIfNeeded() {
 
 std::string Logger::logLevelToString(const LogLevel level) {
     switch (level) {
-    case LogLevel::DEBUG:
-        return "DEBUG";
-    case LogLevel::INFO:
-        return "INFO";
-    case LogLevel::WARNING:
-        return "WARNING";
-    case LogLevel::ERROR:
-        return "ERROR";
-    default:
-        return "UNKNOWN";
+        case LogLevel::DEBUG:
+            return "DEBUG";
+        case LogLevel::INFO:
+            return "INFO";
+        case LogLevel::WARNING:
+            return "WARNING";
+        case LogLevel::ERROR:
+            return "ERROR";
+        default:
+            return "UNKNOWN";
     }
 }
 

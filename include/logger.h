@@ -1,18 +1,17 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#include <format>
 #include <fstream>
 #include <mutex>
 #include <string>
 
 #include "address.h"
 
-enum class LogLevel {
+enum class LogLevel : std::uint8_t {
     DEBUG,
     INFO,
     WARNING,
-    ERROR
+    ERROR,
 };
 
 class Logger {
@@ -22,6 +21,11 @@ public:
 
     // 析构函数：确保日志文件关闭
     ~Logger();
+
+    Logger(const Logger&) = delete;
+    Logger& operator=(const Logger&) = delete;
+    Logger(Logger&&) = delete;
+    Logger& operator=(Logger&&) = delete;
 
     // 写入一条日志信息
     void log(LogLevel level, const std::string& message);
@@ -37,16 +41,16 @@ private:
     LogLevel min_level_;
 
     // 基于当前日期生成日志文件名
-    static std::string generateLogFilename();
+    [[nodiscard]] static std::string generateLogFilename();
 
     // 日期轮换
     void rotateIfNeeded();
 
     // 获取当前时间
-    static std::string currentTime();
+    [[nodiscard]] static std::string currentTime();
 
     // 将日志等级枚举值转换为字符串形式
-    static std::string logLevelToString(LogLevel level);
+    [[nodiscard]] static std::string logLevelToString(LogLevel level);
 };
 
-#endif //LOGGER_H
+#endif  // LOGGER_H

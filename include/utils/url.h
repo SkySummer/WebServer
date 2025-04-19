@@ -14,8 +14,8 @@ public:
             } else if (url[i] == '%' && i + 2 < url.size()) {
                 std::string hex = url.substr(i + 1, 2);
                 try {
-                    const char ch = static_cast<char>(std::stoi(hex, nullptr, 16));
-                    decoded << ch;
+                    const char decoded_char = static_cast<char>(std::stoi(hex, nullptr, 16));
+                    decoded << decoded_char;
                     i += 2;
                 } catch (...) {
                     decoded << '%';
@@ -28,4 +28,4 @@ public:
     }
 };
 
-#endif //URL_H
+#endif  // URL_H

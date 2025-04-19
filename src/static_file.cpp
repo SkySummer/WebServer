@@ -1,15 +1,14 @@
 #include "static_file.h"
 
-#include <algorithm>
+#include <format>
 #include <fstream>
-#include <ranges>
 #include <unordered_map>
 
 #include "utils/mime_type.h"
 #include "utils/url.h"
 
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
+#define STR_HELPER(x) #x      // NOLINT(cppcoreguidelines-macro-usage)
+#define STR(x) STR_HELPER(x)  // NOLINT(cppcoreguidelines-macro-usage)
 
 namespace {
     constexpr auto ERROR_HTML_TEMPLATE = R"(
@@ -32,7 +31,7 @@ namespace {
 </body>
 </html>
 )";
-}
+}  // namespace
 
 StaticFile::StaticFile(Logger& logger, const std::string_view relative_path) : logger_(logger) {
 #ifdef ROOT_PATH
@@ -55,7 +54,8 @@ std::string StaticFile::serve(const std::string& path, const Address& info, std:
     if (!isPathSafe(full_path)) {
         // 路径不安全，返回 403
         logger_.log(LogLevel::DEBUG, info, "Path is not safe, return 403.");
-        return respondWithError(403, status, content_type);
+        constexpr int error_code = 403;
+        return respondWithError(error_code, status, content_type);
     }
 
     if (auto cached = readFromCache(full_path, status, content_type, info)) {
@@ -68,13 +68,14 @@ std::string StaticFile::serve(const std::string& path, const Address& info, std:
     if (!file.is_open()) {
         // 找不到文件，返回 404
         logger_.log(LogLevel::DEBUG, info, "Static file not found, return 404.");
-        return respondWithError(404, status, content_type);
+        constexpr int error_code = 404;
+        return respondWithError(error_code, status, content_type);
     }
 
-    std::ostringstream ss;
-    ss << file.rdbuf();
+    std::ostringstream oss;
+    oss << file.rdbuf();
     status = "200 OK";
-    const std::string content = ss.str();
+    const std::string content = oss.str();
     content_type = MimeType::get(full_path);
 
     // 存入缓存
@@ -105,28 +106,28 @@ std::filesystem::path StaticFile::getFilePath(const std::string& path) const {
 std::optional<std::string> StaticFile::readFromCache(const std::filesystem::path& path, std::string& status,
                                                      std::string& content_type, const Address& info) const {
     std::lock_guard lock(cache_mutex_);
-    const auto it = cache_.find(path);
+    const auto cache_iter = cache_.find(path);
 
-    if (it == cache_.end()) {
+    if (cache_iter == cache_.end()) {
         logger_.log(LogLevel::DEBUG, info, std::format("Cache miss: {}", path.string()));
         return std::nullopt;
     }
 
     if (!exists(path)) {
         logger_.log(LogLevel::DEBUG, info, std::format("Cache erase (file missing): {}", path.string()));
-        cache_.erase(it);
+        cache_.erase(cache_iter);
         return std::nullopt;
     }
 
-    if (it->second.last_modified != last_write_time(path)) {
+    if (cache_iter->second.last_modified != last_write_time(path)) {
         logger_.log(LogLevel::DEBUG, info, std::format("Cache stale: {}", path.string()));
         return std::nullopt;
     }
 
     logger_.log(LogLevel::DEBUG, info, std::format("Cache hit: {}", path.string()));
     status = "200 OK";
-    content_type = it->second.content_type;
-    return it->second.content;
+    content_type = cache_iter->second.content_type;
+    return cache_iter->second.content;
 }
 
 void StaticFile::updateCache(const std::filesystem::path& path, const std::string& content,
@@ -153,7 +154,8 @@ const HttpError& HttpError::get(const int code) {
     };
 
     if (!errors.contains(code)) {
-        return errors.at(500);
+        constexpr int default_code = 500;
+        return errors.at(default_code);
     }
     return errors.at(code);
 }
