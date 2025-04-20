@@ -11,13 +11,16 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "address.h"
+#include "logger.h"
+
 constexpr int MAX_EVENTS = 1024;  // epoll 支持的最大事件数
 
 inline sockaddr* toSockaddr(sockaddr_in* addr) {
     return reinterpret_cast<sockaddr*>(addr);  // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
 }
 
-Server::Server(const uint16_t port, const size_t thread_count, Logger& logger)
+Server::Server(const uint16_t port, const size_t thread_count, Logger* logger)
     : port_(port), thread_pool_(thread_count, logger), logger_(logger) {
     setupSocket();
     setupEpoll();
@@ -26,14 +29,14 @@ Server::Server(const uint16_t port, const size_t thread_count, Logger& logger)
 Server::~Server() {
     close(listen_fd_);
     close(epoll_fd_);
-    logger_.log(LogLevel::INFO, "Server resources cleaned up and shutting down.");
-    logger_.logDivider("Server close");
+    logger_->log(LogLevel::INFO, "Server resources cleaned up and shutting down.");
+    logger_->logDivider("Server close");
 }
 
 void Server::setupSocket() {
     listen_fd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_fd_ == -1) {
-        logger_.log(LogLevel::ERROR, "Failed to create socket.");
+        logger_->log(LogLevel::ERROR, "Failed to create socket.");
         throw std::runtime_error("Failed to create socket.");
     }
 
@@ -49,26 +52,26 @@ void Server::setupSocket() {
 
     // 绑定 socket 到地址
     if (bind(listen_fd_, toSockaddr(&addr), sizeof(addr)) == -1) {
-        logger_.log(LogLevel::ERROR, "Failed to bind socket.");
+        logger_->log(LogLevel::ERROR, "Failed to bind socket.");
         throw std::runtime_error("Failed to bind socket.");
     }
 
     // 开始监听连接请求
     if (listen(listen_fd_, SOMAXCONN) == -1) {
-        logger_.log(LogLevel::ERROR, "Failed to listen on socket.");
+        logger_->log(LogLevel::ERROR, "Failed to listen on socket.");
         throw std::runtime_error("Failed to listen on socket.");
     }
 
     // 设置监听 socket 为非阻塞
     setNonBlocking(listen_fd_);
 
-    logger_.log(LogLevel::INFO, std::format("Listening on port {}", port_));
+    logger_->log(LogLevel::INFO, std::format("Listening on port {}", port_));
 }
 
 void Server::setupEpoll() {
     epoll_fd_ = epoll_create1(0);
     if (epoll_fd_ == -1) {
-        logger_.log(LogLevel::ERROR, "Failed to create epoll instance.");
+        logger_->log(LogLevel::ERROR, "Failed to create epoll instance.");
         throw std::runtime_error("Failed to create epoll instance.");
     }
 
@@ -78,11 +81,11 @@ void Server::setupEpoll() {
     event.data.fd = listen_fd_;
     epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd_, &event);
 
-    logger_.log(LogLevel::INFO, "Epoll instance created and listening socket added.");
+    logger_->log(LogLevel::INFO, "Epoll instance created and listening socket added.");
 }
 
 void Server::run() {
-    logger_.logDivider("Server start");
+    logger_->logDivider("Server start");
 
     while (true) {
         std::array<epoll_event, MAX_EVENTS> events{};
@@ -129,11 +132,11 @@ void Server::disconnectClient(const int client_fd) {
 
     // 从 epoll 中移除 fd，防止后续再触发事件
     if (epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, client_fd, nullptr) == -1) {
-        logger_.log(LogLevel::WARNING, info, std::format("epoll_ctl DEL failed: {}", std::strerror(errno)));
+        logger_->log(LogLevel::WARNING, info, std::format("epoll_ctl DEL failed: {}", std::strerror(errno)));
     }
 
     if (close(client_fd) == -1) {
-        logger_.log(LogLevel::WARNING, info, std::format("close failed: {}", std::strerror(errno)));
+        logger_->log(LogLevel::WARNING, info, std::format("close failed: {}", std::strerror(errno)));
     }
 
     {
@@ -141,7 +144,7 @@ void Server::disconnectClient(const int client_fd) {
         clients_.erase(client_fd);
     }
 
-    logger_.log(LogLevel::INFO, info, "Client disconnected.");
+    logger_->log(LogLevel::INFO, info, "Client disconnected.");
 }
 
 void Server::requestCloseClient(const int client_fd) {
@@ -149,9 +152,9 @@ void Server::requestCloseClient(const int client_fd) {
     std::lock_guard lock(close_mutex_);
 
     if (close_list_.insert(client_fd).second) {
-        logger_.log(LogLevel::DEBUG, info, "Added to close list.");
+        logger_->log(LogLevel::DEBUG, info, "Added to close list.");
     } else {
-        logger_.log(LogLevel::DEBUG, info, "Already in close list, ignoring duplicate.");
+        logger_->log(LogLevel::DEBUG, info, "Already in close list, ignoring duplicate.");
     }
 }
 
@@ -164,7 +167,7 @@ void Server::handleNewConnection() {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 break;  // 无更多连接
             }
-            logger_.log(LogLevel::ERROR, "Failed to accept client connection.");
+            logger_->log(LogLevel::ERROR, "Failed to accept client connection.");
             throw std::runtime_error("Failed to accept client connection.");
         }
 
@@ -184,7 +187,7 @@ void Server::handleNewConnection() {
             clients_[client_fd] = info;
         }
 
-        logger_.log(LogLevel::INFO, info, "New client connected.");
+        logger_->log(LogLevel::INFO, info, "New client connected.");
     }
 }
 
@@ -209,9 +212,9 @@ void Server::handleClientData(const int client_fd) {
 
     if (bytes_read < 0) {
         if (errno == EBADF) {
-            logger_.log(LogLevel::WARNING, info, "Read on invalid fd: already closed elsewhere.");
+            logger_->log(LogLevel::WARNING, info, "Read on invalid fd: already closed elsewhere.");
         } else if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            logger_.log(LogLevel::ERROR, info, std::format("Read error: {}", strerror(errno)));
+            logger_->log(LogLevel::ERROR, info, std::format("Read error: {}", strerror(errno)));
             requestCloseClient(client_fd);
         }
         return;
@@ -239,13 +242,13 @@ void Server::handleClientData(const int client_fd) {
 
     // 根据方法和路径进行不同的处理
     if (method == "GET") {
-        logger_.log(LogLevel::DEBUG, info, std::format("Handling GET for path: {}", path));
+        logger_->log(LogLevel::DEBUG, info, std::format("Handling GET for path: {}", path));
         body = static_file_.serve(path, info, status, content_type);
     } else if (method == "POST") {
-        logger_.log(LogLevel::DEBUG, info, std::format("Handling POST for path: {}", path));
+        logger_->log(LogLevel::DEBUG, info, std::format("Handling POST for path: {}", path));
         body = handlePOST(path, request);
     } else {
-        logger_.log(LogLevel::WARNING, info, std::format("Unsupported method: {} on path: {}", method, path));
+        logger_->log(LogLevel::WARNING, info, std::format("Unsupported method: {} on path: {}", method, path));
         constexpr int error_code = 405;
         body = StaticFile::respondWithError(error_code, status, content_type);
     }
@@ -272,7 +275,7 @@ std::string Server::handlePOST(const std::string& path, const std::string& reque
     body_start += 4;  // 跳过空行部分
     const std::string body = request.substr(body_start);
 
-    logger_.log(LogLevel::DEBUG, std::format("POST body: {}", body));
+    logger_->log(LogLevel::DEBUG, std::format("POST body: {}", body));
 
     if (path == "/data") {
         return "Received POST data: " + body;
@@ -284,7 +287,7 @@ void Server::dispatchClient(const int client_fd) {
     try {
         thread_pool_.enqueue([this, client_fd] { handleClientData(client_fd); });
     } catch (const std::exception& e) {
-        logger_.log(LogLevel::ERROR, getClientInfo(client_fd), std::format("Failed to enqueue task: {}", e.what()));
+        logger_->log(LogLevel::ERROR, getClientInfo(client_fd), std::format("Failed to enqueue task: {}", e.what()));
         requestCloseClient(client_fd);
     }
 }

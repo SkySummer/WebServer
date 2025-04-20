@@ -4,6 +4,7 @@
 #include <fstream>
 #include <unordered_map>
 
+#include "logger.h"
 #include "utils/mime_type.h"
 #include "utils/url.h"
 
@@ -33,7 +34,7 @@ namespace {
 )";
 }  // namespace
 
-StaticFile::StaticFile(Logger& logger, const std::string_view relative_path) : logger_(logger) {
+StaticFile::StaticFile(Logger* logger, const std::string_view relative_path) : logger_(logger) {
 #ifdef ROOT_PATH
     std::filesystem::path root_path = STR(ROOT_PATH);
 #else
@@ -41,7 +42,7 @@ StaticFile::StaticFile(Logger& logger, const std::string_view relative_path) : l
 #endif
 
     root_ = weakly_canonical(root_path / relative_path);
-    logger_.log(LogLevel::INFO, std::format("StaticFile initialized. Root: {}", root_.string()));
+    logger_->log(LogLevel::INFO, std::format("StaticFile initialized. Root: {}", root_.string()));
 }
 
 std::string StaticFile::serve(const std::string& path, const Address& info, std::string& status,
@@ -49,25 +50,25 @@ std::string StaticFile::serve(const std::string& path, const Address& info, std:
     const std::string decoded_path = Url::decode(path);
     std::filesystem::path full_path = getFilePath(decoded_path);
 
-    logger_.log(LogLevel::DEBUG, info, std::format("Request for static file: {}", full_path.string()));
+    logger_->log(LogLevel::DEBUG, info, std::format("Request for static file: {}", full_path.string()));
 
     if (!isPathSafe(full_path)) {
         // 路径不安全，返回 403
-        logger_.log(LogLevel::DEBUG, info, "Path is not safe, return 403.");
+        logger_->log(LogLevel::DEBUG, info, "Path is not safe, return 403.");
         constexpr int error_code = 403;
         return respondWithError(error_code, status, content_type);
     }
 
     if (auto cached = readFromCache(full_path, status, content_type, info)) {
         // 从缓存中取文件
-        logger_.log(LogLevel::DEBUG, info, "Static file served from cache.");
+        logger_->log(LogLevel::DEBUG, info, "Static file served from cache.");
         return *cached;
     }
 
     std::ifstream file(full_path, std::ios::binary);
     if (!file.is_open()) {
         // 找不到文件，返回 404
-        logger_.log(LogLevel::DEBUG, info, "Static file not found, return 404.");
+        logger_->log(LogLevel::DEBUG, info, "Static file not found, return 404.");
         constexpr int error_code = 404;
         return respondWithError(error_code, status, content_type);
     }
@@ -80,7 +81,7 @@ std::string StaticFile::serve(const std::string& path, const Address& info, std:
 
     // 存入缓存
     updateCache(full_path, content, content_type);
-    logger_.log(LogLevel::DEBUG, info, "Static file loaded and cached.");
+    logger_->log(LogLevel::DEBUG, info, "Static file loaded and cached.");
 
     return content;
 }
@@ -109,22 +110,22 @@ std::optional<std::string> StaticFile::readFromCache(const std::filesystem::path
     const auto cache_iter = cache_.find(path);
 
     if (cache_iter == cache_.end()) {
-        logger_.log(LogLevel::DEBUG, info, std::format("Cache miss: {}", path.string()));
+        logger_->log(LogLevel::DEBUG, info, std::format("Cache miss: {}", path.string()));
         return std::nullopt;
     }
 
     if (!exists(path)) {
-        logger_.log(LogLevel::DEBUG, info, std::format("Cache erase (file missing): {}", path.string()));
+        logger_->log(LogLevel::DEBUG, info, std::format("Cache erase (file missing): {}", path.string()));
         cache_.erase(cache_iter);
         return std::nullopt;
     }
 
     if (cache_iter->second.last_modified != last_write_time(path)) {
-        logger_.log(LogLevel::DEBUG, info, std::format("Cache stale: {}", path.string()));
+        logger_->log(LogLevel::DEBUG, info, std::format("Cache stale: {}", path.string()));
         return std::nullopt;
     }
 
-    logger_.log(LogLevel::DEBUG, info, std::format("Cache hit: {}", path.string()));
+    logger_->log(LogLevel::DEBUG, info, std::format("Cache hit: {}", path.string()));
     status = "200 OK";
     content_type = cache_iter->second.content_type;
     return cache_iter->second.content;
@@ -139,7 +140,7 @@ void StaticFile::updateCache(const std::filesystem::path& path, const std::strin
         cache_[path] = std::move(entry);
     } catch (const std::filesystem::filesystem_error& e) {
         // 极端文件丢失情况
-        logger_.log(LogLevel::ERROR, std::format("updateCache failed: {} ({})", e.what(), path.string()));
+        logger_->log(LogLevel::ERROR, std::format("updateCache failed: {} ({})", e.what(), path.string()));
     }
 }
 

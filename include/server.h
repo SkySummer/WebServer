@@ -1,19 +1,23 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include <cstdint>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
-#include "address.h"
-#include "logger.h"
 #include "static_file.h"
 #include "threadpool.h"
+
+// 前向声明
+class Address;
+class Logger;
 
 class Server {
 public:
     // 构造函数：初始化服务器并指定监听端口
-    explicit Server(uint16_t port, size_t thread_count, Logger& logger);
+    explicit Server(uint16_t port, size_t thread_count, Logger* logger);
 
     // 析构函数：关闭 socket 与 epoll 相关资源
     ~Server();
@@ -31,7 +35,7 @@ private:
     int listen_fd_{};         // 监听 socket 文件描述符
     int epoll_fd_{};          // epoll 实例的文件描述符
     ThreadPool thread_pool_;  // 线程池
-    Logger& logger_;          // 日志
+    Logger* logger_;          // 日志
 
     std::unordered_map<int, Address> clients_;  // 缓存客户端地址
     std::mutex clients_mutex_;

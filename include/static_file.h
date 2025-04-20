@@ -2,11 +2,10 @@
 #define STATIC_FILE_H
 
 #include <filesystem>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
-
-#include "logger.h"
 
 class HttpError {
 public:
@@ -22,9 +21,13 @@ struct CacheEntry {
     std::string content_type;                       // MIME 类型
 };
 
+// 前向声明
+class Address;
+class Logger;
+
 class StaticFile {
 public:
-    explicit StaticFile(Logger& logger, std::string_view relative_path = "./static");
+    explicit StaticFile(Logger* logger, std::string_view relative_path = "./static");
 
     [[nodiscard]] std::string serve(const std::string& path, const Address& info, std::string& status,
                                     std::string& content_type) const;
@@ -33,7 +36,7 @@ public:
 
 private:
     std::filesystem::path root_;  // 静态文件根目录
-    Logger& logger_;              // 日志
+    Logger* logger_;              // 日志
 
     mutable std::unordered_map<std::filesystem::path, CacheEntry> cache_;
     mutable std::mutex cache_mutex_;

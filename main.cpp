@@ -10,7 +10,7 @@ int main() {
 
         Logger logger(LogLevel::DEBUG);
         logger.logDivider("Server init");
-        Server server(port, thread_count, logger);
+        Server server(port, thread_count, &logger);
         server.run();
     } catch (const std::exception& e) {
         std::cerr << "Server crashed: " << e.what() << '\n';

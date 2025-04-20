@@ -5,14 +5,15 @@
 #include <mutex>
 #include <string>
 
-#include "address.h"
-
 enum class LogLevel : std::uint8_t {
     DEBUG,
     INFO,
     WARNING,
     ERROR,
 };
+
+// 前向声明
+class Address;
 
 class Logger {
 public:

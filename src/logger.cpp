@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <iostream>
 
+#include "address.h"
+
 Logger::Logger(const LogLevel min_level) : min_level_(min_level) {
     filename_ = generateLogFilename();
     file_.open(filename_, std::ios::app);
@@ -26,7 +28,7 @@ void Logger::log(const LogLevel level, const std::string& message) {
     try {
         rotateIfNeeded();
     } catch (const std::exception& e) {
-        std::cerr << "Logger::log(): Failed to rotate log file: " << e.what() << std::endl;
+        std::cerr << "Logger::log(): Failed to rotate log file: " << e.what() << '\n';
         return;
     }
 
@@ -35,7 +37,7 @@ void Logger::log(const LogLevel level, const std::string& message) {
     std::lock_guard lock(mutex_);
 
     // 写入日志格式：[YYYY-MM-DD HH:MM:SS] [LEVEL] message
-    file_ << std::format("[{}] [{}] {}", time, logLevelToString(level), message) << std::endl;
+    file_ << std::format("[{}] [{}] {}", time, logLevelToString(level), message) << '\n';
 }
 
 void Logger::log(const LogLevel level, const Address& address, const std::string& message) {
@@ -46,7 +48,7 @@ void Logger::log(const LogLevel level, const Address& address, const std::string
     try {
         rotateIfNeeded();
     } catch (const std::exception& e) {
-        std::cerr << "Logger::log(): Failed to rotate log file: " << e.what() << std::endl;
+        std::cerr << "Logger::log(): Failed to rotate log file: " << e.what() << '\n';
         return;
     }
 
@@ -59,10 +61,9 @@ void Logger::log(const LogLevel level, const Address& address, const std::string
     if (client_fd != -1) {
         file_ << std::format("[{}] [{}] [Client {}] [fd: {}] {}", time, logLevelToString(level), client_info, client_fd,
                              message)
-              << std::endl;
+              << '\n';
     } else {
-        file_ << std::format("[{}] [{}] [Client {}] {}", time, logLevelToString(level), client_info, message)
-              << std::endl;
+        file_ << std::format("[{}] [{}] [Client {}] {}", time, logLevelToString(level), client_info, message) << '\n';
     }
 }
 
