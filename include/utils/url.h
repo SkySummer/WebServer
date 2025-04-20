@@ -1,5 +1,5 @@
-#ifndef URL_H
-#define URL_H
+#ifndef UTILS_URL_H
+#define UTILS_URL_H
 
 #include <sstream>
 #include <string>
@@ -28,4 +28,4 @@ public:
     }
 };
 
-#endif  // URL_H
+#endif  // UTILS_URL_H

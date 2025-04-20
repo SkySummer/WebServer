@@ -1,5 +1,5 @@
-#ifndef MIME_TYPE_H
-#define MIME_TYPE_H
+#ifndef UTILS_MIME_TYPE_H
+#define UTILS_MIME_TYPE_H
 
 #include <algorithm>
 #include <filesystem>
@@ -53,4 +53,4 @@ public:
     [[nodiscard]] static std::string get(const std::filesystem::path& path) { return detail::getMime(path); }
 };
 
-#endif  // MIME_TYPE_H
+#endif  // UTILS_MIME_TYPE_H
