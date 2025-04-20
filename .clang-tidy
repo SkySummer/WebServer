@@ -9,6 +9,7 @@ Checks: >
   google-*,
   -google-runtime-references,
   misc-unused-parameters,
+  llvm-header-guard,
   portability-*,
   -modernize-use-trailing-return-type,
   -readability-implicit-bool-conversion,
