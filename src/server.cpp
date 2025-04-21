@@ -4,6 +4,7 @@
 #include <cerrno>
 #include <cstring>
 #include <format>
+#include <mutex>
 
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -13,6 +14,7 @@
 
 #include "address.h"
 #include "logger.h"
+#include "utils/form_parser.h"
 
 constexpr int MAX_EVENTS = 1024;  // epoll 支持的最大事件数
 
@@ -246,7 +248,7 @@ void Server::handleClientData(const int client_fd) {
         body = static_file_.serve(path, info, status, content_type);
     } else if (method == "POST") {
         logger_->log(LogLevel::DEBUG, info, std::format("Handling POST for path: {}", path));
-        body = handlePOST(path, request);
+        body = handlePOST(request, status, content_type);
     } else {
         logger_->log(LogLevel::WARNING, info, std::format("Unsupported method: {} on path: {}", method, path));
         constexpr int error_code = 405;
@@ -266,21 +268,29 @@ void Server::handleClientData(const int client_fd) {
     write(client_fd, response.c_str(), response.size());
 }
 
-std::string Server::handlePOST(const std::string& path, const std::string& request) const {
-    size_t body_start = request.find("\r\n\r\n");
-    if (body_start == std::string::npos) {
-        return "400 Bad Request";
+std::string Server::handlePOST(const std::string& request, std::string& status, std::string& content_type) const {
+    const std::string delimiter = "\r\n\r\n";
+    const size_t body_pos = request.find(delimiter);
+    if (body_pos == std::string::npos) {
+        constexpr int error_code = 400;
+        return StaticFile::respondWithError(error_code, status, content_type);
     }
 
-    body_start += 4;  // 跳过空行部分
-    const std::string body = request.substr(body_start);
+    std::string body = request.substr(body_pos + delimiter.size());
 
     logger_->log(LogLevel::DEBUG, std::format("POST body: {}", body));
 
-    if (path == "/data") {
-        return "Received POST data: " + body;
+    auto form_data = FormPasser::parse(body);
+    if (form_data.empty()) {
+        return "No form data received.";
     }
-    return "404 Not Found";
+
+    std::string result = "Received POST data:\n";
+    for (const auto& [key, value] : form_data) {
+        result += std::format("    {} = {}\n", key, value);
+    }
+
+    return result;
 }
 
 void Server::dispatchClient(const int client_fd) {

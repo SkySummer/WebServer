@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>表单测试 | C++ WebServer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f8f9fa;
+            color: #343a40;
+            text-align: center;
+            padding: 4rem 1rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #007bff;
+        }
+
+        form {
+            margin-top: 2rem;
+            display: inline-block;
+            text-align: left;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+
+        label {
+            display: block;
+            margin-top: 1rem;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        textarea {
+            font-family: inherit;
+            width: 100%;
+            max-width: 100%;
+            min-width: 300px;
+            box-sizing: border-box;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        input[type="submit"] {
+            display: block;
+            margin-top: 1.5rem;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 0.6rem 1.2rem;
+            font-size: 1rem;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        .status {
+            margin-top: 2rem;
+            font-size: 0.95rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>📬 POST 表单测试</h1>
+
+    <form method="POST" action="/form">
+        <label for="name">姓名：</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="email">邮箱：</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="message">留言：</label>
+        <textarea id="message" name="message" rows="5" required></textarea>
+
+        <input type="submit" value="提交">
+    </form>
+
+    <div class="status">欢迎使用 C++ WebServer 进行表单测试。<br>
+        <a href="/" style="color: inherit; text-decoration: underline;">返回首页</a>
+    </div>
+</body>
+
+</html>
