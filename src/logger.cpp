@@ -38,6 +38,7 @@ void Logger::log(const LogLevel level, const std::string& message) {
 
     // 写入日志格式：[YYYY-MM-DD HH:MM:SS] [LEVEL] message
     file_ << std::format("[{}] [{}] {}", time, logLevelToString(level), message) << '\n';
+    file_.flush();
 }
 
 void Logger::log(const LogLevel level, const Address& address, const std::string& message) {
@@ -65,6 +66,7 @@ void Logger::log(const LogLevel level, const Address& address, const std::string
     } else {
         file_ << std::format("[{}] [{}] [Client {}] {}", time, logLevelToString(level), client_info, message) << '\n';
     }
+    file_.flush();
 }
 
 void Logger::logDivider(const std::string& title, const LogLevel level) {
