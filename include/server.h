@@ -67,8 +67,7 @@ private:
     void handleClientData(int client_fd);
 
     // 处理 POST 请求，读取请求体并返回内容
-    [[nodiscard]] std::string handlePOST(const std::string& request, std::string& status,
-                                         std::string& content_type) const;
+    [[nodiscard]] std::string handlePOST(const std::string& request) const;
 
     // 分发任务
     void dispatchClient(int client_fd);

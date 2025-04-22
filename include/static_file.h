@@ -7,18 +7,11 @@
 #include <string>
 #include <unordered_map>
 
-class HttpError {
-public:
-    std::string status_text;  // 状态码
-    std::string message;      // 信息
-
-    [[nodiscard]] static const HttpError& get(int code);
-};
+#include "http_response.h"
 
 struct CacheEntry {
-    std::string content;                            // 文件内容
-    std::filesystem::file_time_type last_modified;  // 文件最后修改时间
-    std::string content_type;                       // MIME 类型
+    HttpResponse builder{};                         // 文件内容
+    std::filesystem::file_time_type last_modified;  // 最后修改时间
 };
 
 // 前向声明
@@ -29,10 +22,7 @@ class StaticFile {
 public:
     explicit StaticFile(Logger* logger, std::string_view relative_path = "./static");
 
-    [[nodiscard]] std::string serve(const std::string& path, const Address& info, std::string& status,
-                                    std::string& content_type) const;
-
-    [[nodiscard]] static std::string respondWithError(int code, std::string& status, std::string& content_type);
+    [[nodiscard]] std::string serve(const std::string& path, const Address& info) const;
 
 private:
     std::filesystem::path root_;  // 静态文件根目录
@@ -45,14 +35,13 @@ private:
 
     [[nodiscard]] std::filesystem::path getFilePath(const std::string& path) const;
 
-    [[nodiscard]] std::optional<std::string> readFromCache(const std::filesystem::path& path, std::string& status,
-                                                           std::string& content_type, const Address& info) const;
+    [[nodiscard]] std::optional<HttpResponse> readFromCache(const std::filesystem::path& path,
+                                                            const Address& info) const;
 
     [[nodiscard]] static std::string generateDirectoryListing(const std::filesystem::path& dir_path,
                                                               const std::string& request_path);
 
-    void updateCache(const std::filesystem::path& path, const std::string& content,
-                     const std::string& content_type) const;
+    void updateCache(const std::filesystem::path& path, const HttpResponse& builder) const;
 };
 
 #endif  // STATIC_FILE_H

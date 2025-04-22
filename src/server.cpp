@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "address.h"
+#include "http_response.h"
 #include "logger.h"
 #include "utils/form_parser.h"
 
@@ -237,43 +238,30 @@ void Server::handleClientData(const int client_fd) {
         }
     }
 
-    // 根据路径构造不同的响应体内容
-    std::string body;
-    std::string status = "200 OK";
-    std::string content_type = "text/plain; charset=UTF-8";
+    std::string response;
 
     // 根据方法和路径进行不同的处理
     if (method == "GET") {
         logger_->log(LogLevel::DEBUG, info, std::format("Handling GET for path: {}", path));
-        body = static_file_.serve(path, info, status, content_type);
+        response = static_file_.serve(path, info);
     } else if (method == "POST") {
         logger_->log(LogLevel::DEBUG, info, std::format("Handling POST for path: {}", path));
-        body = handlePOST(request, status, content_type);
+        response = handlePOST(request);
     } else {
         logger_->log(LogLevel::WARNING, info, std::format("Unsupported method: {} on path: {}", method, path));
         constexpr int error_code = 405;
-        body = StaticFile::respondWithError(error_code, status, content_type);
+        response = HttpResponse::buildErrorResponse(error_code);
     }
-
-    // 发送固定的 HTTP 响应（状态行 + 头部 + 空行 + 内容）
-    const std::string response = std::format(
-        "HTTP/1.1 {}\r\n"
-        "Content-Type: {}\r\n"
-        "Content-Length: {}\r\n"
-        "Connection: close\r\n"
-        "\r\n"
-        "{}",
-        status, content_type, body.size(), body);
 
     write(client_fd, response.c_str(), response.size());
 }
 
-std::string Server::handlePOST(const std::string& request, std::string& status, std::string& content_type) const {
+std::string Server::handlePOST(const std::string& request) const {
     const std::string delimiter = "\r\n\r\n";
     const size_t body_pos = request.find(delimiter);
     if (body_pos == std::string::npos) {
         constexpr int error_code = 400;
-        return StaticFile::respondWithError(error_code, status, content_type);
+        return HttpResponse::buildErrorResponse(error_code);
     }
 
     std::string body = request.substr(body_pos + delimiter.size());
@@ -290,7 +278,7 @@ std::string Server::handlePOST(const std::string& request, std::string& status, 
         result += std::format("    {} = {}\n", key, value);
     }
 
-    return result;
+    return HttpResponse{}.setStatus("200 OK").setContentType("text/plain; charset=UTF-8").setBody(result).build();
 }
 
 void Server::dispatchClient(const int client_fd) {
