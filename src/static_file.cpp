@@ -73,6 +73,19 @@ std::string StaticFile::serve(const std::string& path, const Address& info) cons
     }
 
     if (is_directory(full_path)) {
+        if (!path.ends_with('/')) {
+            std::string corrected_url = path + '/';
+            logger_->log(LogLevel::INFO, info,
+                         std::format("Redirecting to directory with trailing slash: {} -> {}", path, corrected_url));
+
+            return HttpResponse{}
+                .setStatus("301 Moved Permanently")
+                .addHeader("Location", corrected_url)
+                .setContentType("text/plain")
+                .setBody("Redirecting to " + corrected_url)
+                .build();
+        }
+
         // 生成目录列表
         logger_->log(LogLevel::DEBUG, info, std::format("Serving directory listing for: {}", full_path.string()));
         return HttpResponse{}
