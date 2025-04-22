@@ -1,6 +1,8 @@
 #include "static_file.h"
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -17,6 +19,33 @@
 #define STR(x) STR_HELPER(x)  // NOLINT(cppcoreguidelines-macro-usage)
 
 namespace {
+    std::string formatSize(const std::uintmax_t bytes) {
+        constexpr std::array<const char*, 5> units = {"B", "KB", "MB", "GB", "TB"};
+        constexpr int base = 1024;
+        auto size = static_cast<double>(bytes);
+        size_t unit_index = 0;
+
+        while (size >= base && unit_index < units.size() - 1) {
+            size /= base;
+            ++unit_index;
+        }
+
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2) << size << " " << units.at(unit_index);
+        return oss.str();
+    }
+
+    std::string formatTime(const std::filesystem::file_time_type file_time) {
+        const auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+            file_time - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+        const auto raw_time = std::chrono::system_clock::to_time_t(sctp);
+        const std::tm local_time = *std::localtime(&raw_time);
+
+        std::ostringstream oss;
+        oss << std::put_time(&local_time, "%Y-%m-%d %H:%M");
+        return oss.str();
+    }
+
     constexpr auto ERROR_HTML_TEMPLATE = R"(
 <!DOCTYPE html>
 <html lang="en">
@@ -64,7 +93,7 @@ std::string StaticFile::serve(const std::string& path, const Address& info, std:
         return respondWithError(error_code, status, content_type);
     }
 
-    if (std::filesystem::is_directory(full_path)) {
+    if (is_directory(full_path)) {
         // 生成目录列表
         logger_->log(LogLevel::DEBUG, info, std::format("Serving directory listing for: {}", full_path.string()));
         content_type = "text/html; charset=UTF-8";
@@ -115,28 +144,50 @@ std::string StaticFile::generateDirectoryListing(const std::filesystem::path& di
     auto filename_less = [](const auto& lhs_entry, const auto& rhs_entry) {
         return lhs_entry.path().filename().string() < rhs_entry.path().filename().string();
     };
-    std::sort(directories.begin(), directories.end(), filename_less);
-    std::sort(files.begin(), files.end(), filename_less);
+    std::ranges::sort(directories, filename_less);
+    std::ranges::sort(files, filename_less);
 
     std::ostringstream html;
 
-    html << "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
-         << "<meta charset=\"UTF-8\">\n"
-         << "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-         << std::format("<title>Index of {}</title>\n", Url::decode(request_path)) << "<style>\n"
-         << "body { font-family: 'Segoe UI', sans-serif; background: #f8f9fa; color: #343a40; padding: 2rem; }\n"
-         << "h1 { font-size: 2.5rem; color: #007bff; text-align: center; }\n"
-         << "ul { list-style: none; padding: 0; max-width: 600px; margin: 2rem auto; }\n"
-         << "li { background: #fff; margin: 0.5rem 0; padding: 0.75rem 1rem; border-radius: 8px; "
-         << "box-shadow: 0 1px 3px rgba(0,0,0,0.1); }\n"
-         << "a { text-decoration: none; color: #007bff; font-weight: 500; display: block; }\n"
-         << "a:hover { text-decoration: underline; }\n"
-         << "</style>\n</head>\n<body>\n"
-         << std::format("<h1>📂 Index of {}</h1>\n", Url::decode(request_path)) << "<ul>\n";
+    html << R"(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Index of )"
+         << Url::decode(request_path) << R"(</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f8f9fa; color: #343a40; padding: 2rem 3rem; }
+        h1 { color: #007bff; font-size: 2.5rem; line-height: 1.2; margin-bottom: 2rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 1rem; }
+        th, td { text-align: left; padding: 0.75rem 1rem; }
+        th { background-color: #e9f5ff; border-bottom: 2px solid #007bff; }
+        tr:nth-child(even) { background-color: #f1f3f5; }
+        a { text-decoration: none; color: #007bff; }
+        a:hover { text-decoration: underline; }
+        .icon { margin-right: 0.5rem; }
+    </style>
+</head>
+<body>
+    <h1>📁 Index of )"
+         << Url::decode(request_path) << R"(</h1>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Last Modified</th>
+        </tr>
+)";
 
     // 返回上级
     if (request_path != "/") {
-        html << "<li><a href=\"../\">⬅️ ../</a></li>\n";
+        html << R"(
+        <tr>
+            <td><a href="../">⬅️ ../</a></td>
+            <td>-</td>
+            <td>-</td>
+        </tr>
+    )";
     }
 
     std::string base_path = request_path;
@@ -148,17 +199,41 @@ std::string StaticFile::generateDirectoryListing(const std::filesystem::path& di
     for (const auto& dir : directories) {
         const std::string name = dir.path().filename().string();
         const std::string href = (std::filesystem::path(base_path) / Url::encode(name)).string() + '/';
-        html << std::format("<li><a href=\"{}\">📁 {}/</a></li>\n", href, name);
+        const std::string time = formatTime(last_write_time(dir));
+
+        html << std::format(R"(
+        <tr>
+            <td><a href="{}">📁 {}/</a></td>
+            <td>-</td>
+            <td>{}</td>
+        </tr>
+    )",
+                            href, name, time);
     }
 
     // 文件
     for (const auto& file : files) {
         const std::string name = file.path().filename().string();
         const std::string href = (std::filesystem::path(base_path) / Url::encode(name)).string();
-        html << std::format("<li><a href=\"{}\">📄 {}</a></li>\n", href, name);
+        const std::string size = formatSize(file_size(file));
+        const std::string time = formatTime(last_write_time(file));
+
+        html << std::format(R"(
+        <tr>
+            <td><a href="{}">📄 {}</a></td>
+            <td>{}</td>
+            <td>{}</td>
+        </tr>
+    )",
+                            href, name, size, time);
     }
 
-    html << "</ul>\n</body>\n</html>\n";
+    html << R"(
+    </table>
+</body>
+</html>
+)";
+
     return html.str();
 }
 
@@ -210,7 +285,7 @@ std::optional<std::string> StaticFile::readFromCache(const std::filesystem::path
 void StaticFile::updateCache(const std::filesystem::path& path, const std::string& content,
                              const std::string& content_type) const {
     try {
-        CacheEntry entry = {content, last_write_time(path), content_type};
+        CacheEntry entry = {.content = content, .last_modified = last_write_time(path), .content_type = content_type};
 
         std::lock_guard lock(cache_mutex_);
         cache_[path] = std::move(entry);
@@ -222,12 +297,36 @@ void StaticFile::updateCache(const std::filesystem::path& path, const std::strin
 
 const HttpError& HttpError::get(const int code) {
     static const std::unordered_map<int, HttpError> errors = {
-        {400, {"Bad Request", "Your request is invalid or malformed."}},
-        {403, {"Forbidden", "You don't have permission to access this page."}},
-        {404, {"Not Found", "The page you're looking for doesn't exist."}},
-        {405, {"Method Not Allowed", "The method you're trying to use is not allowed for this resource."}},
-        {500, {"Internal Server Error", "Something went wrong on the server."}},
-        {502, {"Bad Gateway", "The server received an invalid response from an upstream server."}},
+        {400,
+         {
+             .status_text = "Bad Request",
+             .message = "Your request is invalid or malformed.",
+         }},
+        {403,
+         {
+             .status_text = "Forbidden",
+             .message = "You don't have permission to access this page.",
+         }},
+        {404,
+         {
+             .status_text = "Not Found",
+             .message = "The page you're looking for doesn't exist.",
+         }},
+        {405,
+         {
+             .status_text = "Method Not Allowed",
+             .message = "The method you're trying to use is not allowed for this resource.",
+         }},
+        {500,
+         {
+             .status_text = "Internal Server Error",
+             .message = "Something went wrong on the server.",
+         }},
+        {502,
+         {
+             .status_text = "Bad Gateway",
+             .message = "The server received an invalid response from an upstream server.",
+         }},
     };
 
     if (!errors.contains(code)) {
