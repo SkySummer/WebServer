@@ -48,6 +48,9 @@ private:
     [[nodiscard]] std::optional<std::string> readFromCache(const std::filesystem::path& path, std::string& status,
                                                            std::string& content_type, const Address& info) const;
 
+    [[nodiscard]] static std::string generateDirectoryListing(const std::filesystem::path& dir_path,
+                                                              const std::string& request_path);
+
     void updateCache(const std::filesystem::path& path, const std::string& content,
                      const std::string& content_type) const;
 };

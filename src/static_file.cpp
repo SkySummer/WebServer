@@ -1,8 +1,13 @@
 #include "static_file.h"
 
+#include <algorithm>
+#include <filesystem>
 #include <format>
 #include <fstream>
+#include <sstream>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "logger.h"
 #include "utils/mime_type.h"
@@ -59,6 +64,14 @@ std::string StaticFile::serve(const std::string& path, const Address& info, std:
         return respondWithError(error_code, status, content_type);
     }
 
+    if (std::filesystem::is_directory(full_path)) {
+        // 生成目录列表
+        logger_->log(LogLevel::DEBUG, info, std::format("Serving directory listing for: {}", full_path.string()));
+        content_type = "text/html; charset=UTF-8";
+        status = "200 OK";
+        return generateDirectoryListing(full_path, path);
+    }
+
     if (auto cached = readFromCache(full_path, status, content_type, info)) {
         // 从缓存中取文件
         logger_->log(LogLevel::DEBUG, info, "Static file served from cache.");
@@ -84,6 +97,69 @@ std::string StaticFile::serve(const std::string& path, const Address& info, std:
     logger_->log(LogLevel::DEBUG, info, "Static file loaded and cached.");
 
     return content;
+}
+
+std::string StaticFile::generateDirectoryListing(const std::filesystem::path& dir_path,
+                                                 const std::string& request_path) {
+    std::vector<std::filesystem::directory_entry> directories;
+    std::vector<std::filesystem::directory_entry> files;
+
+    for (const auto& entry : std::filesystem::directory_iterator(dir_path)) {
+        if (entry.is_directory()) {
+            directories.emplace_back(entry);
+        } else {
+            files.emplace_back(entry);
+        }
+    }
+
+    auto filename_less = [](const auto& lhs_entry, const auto& rhs_entry) {
+        return lhs_entry.path().filename().string() < rhs_entry.path().filename().string();
+    };
+    std::sort(directories.begin(), directories.end(), filename_less);
+    std::sort(files.begin(), files.end(), filename_less);
+
+    std::ostringstream html;
+
+    html << "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
+         << "<meta charset=\"UTF-8\">\n"
+         << "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+         << std::format("<title>Index of {}</title>\n", Url::decode(request_path)) << "<style>\n"
+         << "body { font-family: 'Segoe UI', sans-serif; background: #f8f9fa; color: #343a40; padding: 2rem; }\n"
+         << "h1 { font-size: 2.5rem; color: #007bff; text-align: center; }\n"
+         << "ul { list-style: none; padding: 0; max-width: 600px; margin: 2rem auto; }\n"
+         << "li { background: #fff; margin: 0.5rem 0; padding: 0.75rem 1rem; border-radius: 8px; "
+         << "box-shadow: 0 1px 3px rgba(0,0,0,0.1); }\n"
+         << "a { text-decoration: none; color: #007bff; font-weight: 500; display: block; }\n"
+         << "a:hover { text-decoration: underline; }\n"
+         << "</style>\n</head>\n<body>\n"
+         << std::format("<h1>📂 Index of {}</h1>\n", Url::decode(request_path)) << "<ul>\n";
+
+    // 返回上级
+    if (request_path != "/") {
+        html << "<li><a href=\"../\">⬅️ ../</a></li>\n";
+    }
+
+    std::string base_path = request_path;
+    if (!base_path.empty() && base_path.back() != '/') {
+        base_path += '/';
+    }
+
+    // 目录
+    for (const auto& dir : directories) {
+        const std::string name = dir.path().filename().string();
+        const std::string href = (std::filesystem::path(base_path) / Url::encode(name)).string() + '/';
+        html << std::format("<li><a href=\"{}\">📁 {}/</a></li>\n", href, name);
+    }
+
+    // 文件
+    for (const auto& file : files) {
+        const std::string name = file.path().filename().string();
+        const std::string href = (std::filesystem::path(base_path) / Url::encode(name)).string();
+        html << std::format("<li><a href=\"{}\">📄 {}</a></li>\n", href, name);
+    }
+
+    html << "</ul>\n</body>\n</html>\n";
+    return html.str();
 }
 
 std::string StaticFile::respondWithError(const int code, std::string& status, std::string& content_type) {
