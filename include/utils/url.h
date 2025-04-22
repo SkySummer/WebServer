@@ -1,6 +1,8 @@
 #ifndef UTILS_URL_H
 #define UTILS_URL_H
 
+#include <cctype>
+#include <iomanip>
 #include <sstream>
 #include <string>
 
@@ -25,6 +27,20 @@ public:
             }
         }
         return decoded.str();
+    }
+
+    [[nodiscard]] static std::string encode(const std::string& url) {
+        std::ostringstream encoded;
+        encoded.fill('0');
+        encoded << std::hex;
+        for (const unsigned char chr : url) {
+            if (isalnum(chr) || chr == '-' || chr == '_' || chr == '.' || chr == '~') {
+                encoded << chr;
+            } else {
+                encoded << '%' << std::uppercase << std::setw(2) << static_cast<int>(chr) << std::nouppercase;
+            }
+        }
+        return encoded.str();
     }
 };
 
