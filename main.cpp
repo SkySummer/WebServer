@@ -1,15 +1,33 @@
 #include <cstdint>
+#include <format>
 #include <iostream>
 
 #include "logger.h"
 #include "server.h"
+#include "utils/config_parser.h"
+
+#define STR_HELPER(x) #x      // NOLINT(cppcoreguidelines-macro-usage)
+#define STR(x) STR_HELPER(x)  // NOLINT(cppcoreguidelines-macro-usage)
 
 int main() {
     try {
-        constexpr uint16_t port = 8080;
-        constexpr size_t thread_count = 4;
+#ifdef ROOT_PATH
+        std::filesystem::path root_path = STR(ROOT_PATH);
+#else
+        std::filesystem::path root_path = std::filesystem::current_path();
+#endif
 
-        Logger logger(LogLevel::DEBUG);
+        const ConfigParser config(root_path / "config.ini");
+
+        Logger logger(config.getLogLevel());
+        logger.logDivider("Config init");
+
+        const uint16_t port = config.get("port", 8080);
+        logger.log(LogLevel::INFO, std::format("Server port: {}", port));
+
+        const size_t thread_count = config.get("thread_count", 4);
+        logger.log(LogLevel::INFO, std::format("Thread count: {}", thread_count));
+
         logger.logDivider("Server init");
         Server server(port, thread_count, &logger);
         server.run();
