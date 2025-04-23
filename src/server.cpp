@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <format>
 #include <mutex>
@@ -9,7 +10,9 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/epoll.h>
+#include <sys/eventfd.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "address.h"
@@ -32,6 +35,7 @@ Server::Server(const uint16_t port, const size_t thread_count, Logger* logger)
 Server::~Server() {
     close(listen_fd_);
     close(epoll_fd_);
+    close(event_fd_);
     logger_->log(LogLevel::INFO, "Server resources cleaned up and shutting down.");
     logger_->logDivider("Server close");
 }
@@ -84,27 +88,45 @@ void Server::setupEpoll() {
     event.data.fd = listen_fd_;
     epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd_, &event);
 
+    // 创建并注册 eventfd 用于唤醒 epoll_wait
+    event_fd_ = eventfd(0, EFD_NONBLOCK);
+    if (event_fd_ == -1) {
+        logger_->log(LogLevel::ERROR, "Failed to create eventfd.");
+        throw std::runtime_error("Failed to create eventfd.");
+    }
+
+    epoll_event wakeup_event{};
+    wakeup_event.events = EPOLLIN;
+    wakeup_event.data.fd = event_fd_;
+    epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, event_fd_, &wakeup_event);
+
     logger_->log(LogLevel::INFO, "Epoll instance created and listening socket added.");
 }
 
 void Server::run() {
     logger_->logDivider("Server start");
 
+    std::array<epoll_event, MAX_EVENTS> events{};
     while (true) {
-        std::array<epoll_event, MAX_EVENTS> events{};
         const int event_count = epoll_wait(epoll_fd_, events.data(), MAX_EVENTS, -1);
         for (int i = 0; i < event_count; ++i) {
             if (const int client_fd = events.at(i).data.fd; client_fd == listen_fd_) {
                 handleNewConnection();
+            } else if (client_fd == event_fd_) {
+                // 读取 eventfd 数据，清空状态
+                uint64_t dummy{};
+                read(event_fd_, &dummy, sizeof(dummy));
+                processCloseList();
             } else {
                 dispatchClient(client_fd);
             }
         }
-        processCloseList();
     }
 }
 
 void Server::processCloseList() {
+    close_list_dirty_.clear();
+
     while (true) {
         int client_fd{};
         {
@@ -152,10 +174,22 @@ void Server::disconnectClient(const int client_fd) {
 
 void Server::requestCloseClient(const int client_fd) {
     const Address info = getClientInfo(client_fd);
-    std::lock_guard lock(close_mutex_);
+    bool inserted = false;
 
-    if (close_list_.insert(client_fd).second) {
+    {
+        std::lock_guard lock(close_mutex_);
+        inserted = close_list_.insert(client_fd).second;
+    }
+
+    if (inserted) {
         logger_->log(LogLevel::DEBUG, info, "Added to close list.");
+
+        if (!close_list_dirty_.test_and_set()) {
+            constexpr uint64_t notify = 1;
+            if (write(event_fd_, &notify, sizeof(notify)) != sizeof(notify)) {
+                logger_->log(LogLevel::WARNING, info, "Failed to wake epoll via eventfd.");
+            }
+        }
     } else {
         logger_->log(LogLevel::DEBUG, info, "Already in close list, ignoring duplicate.");
     }
@@ -254,6 +288,7 @@ void Server::handleClientData(const int client_fd) {
     }
 
     write(client_fd, response.c_str(), response.size());
+    requestCloseClient(client_fd);
 }
 
 std::string Server::handlePOST(const std::string& request) const {

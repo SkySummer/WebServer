@@ -1,6 +1,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -34,13 +35,15 @@ private:
     uint16_t port_;           // 服务器监听端口
     int listen_fd_{};         // 监听 socket 文件描述符
     int epoll_fd_{};          // epoll 实例的文件描述符
+    int event_fd_{};          // 用于唤醒 epoll_wait
     ThreadPool thread_pool_;  // 线程池
     Logger* logger_;          // 日志
 
     std::unordered_map<int, Address> clients_;  // 缓存客户端地址
     std::mutex clients_mutex_;
 
-    std::unordered_set<int> close_list_;  // 客户端关闭列表
+    std::unordered_set<int> close_list_;                    // 客户端关闭列表
+    std::atomic_flag close_list_dirty_ = ATOMIC_FLAG_INIT;  // 标记关闭列表是否被修改
     std::mutex close_mutex_;
 
     StaticFile static_file_{logger_, "./static"};  // 静态文件目录
