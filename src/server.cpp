@@ -80,7 +80,7 @@ void Server::setupEpoll() {
 
     // 添加监听 socket 到 epoll 监听列表
     epoll_event event{};
-    event.events = EPOLLIN;
+    event.events = EPOLLIN | EPOLLET;
     event.data.fd = listen_fd_;
     epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd_, &event);
 
