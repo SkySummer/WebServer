@@ -28,8 +28,15 @@ int main() {
         const size_t thread_count = config.get("thread_count", 4);
         logger.log(LogLevel::INFO, std::format("Thread count: {}", thread_count));
 
+        const bool linger = config.get("linger", true);
+        if (linger) {
+            logger.log(LogLevel::INFO, "Linger mode enabled.");
+        } else {
+            logger.log(LogLevel::INFO, "Linger mode disabled.");
+        }
+
         logger.logDivider("Server init");
-        Server server(port, thread_count, &logger);
+        Server server(port, linger, thread_count, &logger);
         server.run();
     } catch (const std::exception& e) {
         std::cerr << "Server crashed: " << e.what() << '\n';

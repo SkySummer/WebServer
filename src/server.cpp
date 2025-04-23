@@ -26,8 +26,8 @@ inline sockaddr* toSockaddr(sockaddr_in* addr) {
     return reinterpret_cast<sockaddr*>(addr);  // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
 }
 
-Server::Server(const uint16_t port, const size_t thread_count, Logger* logger)
-    : port_(port), thread_pool_(thread_count, logger), logger_(logger) {
+Server::Server(const uint16_t port, const bool linger, const size_t thread_count, Logger* logger)
+    : port_(port), linger_(linger), thread_pool_(thread_count, logger), logger_(logger) {
     setupSocket();
     setupEpoll();
 }
@@ -210,6 +210,13 @@ void Server::handleNewConnection() {
 
         // 设置客户端 socket 为非阻塞
         setNonBlocking(client_fd);
+
+        if (linger_) {
+            linger so_linger{};
+            so_linger.l_onoff = 1;
+            so_linger.l_linger = 1;
+            setsockopt(client_fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(so_linger));
+        }
 
         // 添加客户端 socket 到 epoll 中，监听读写事件
         epoll_event event{};

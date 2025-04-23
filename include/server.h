@@ -18,7 +18,7 @@ class Logger;
 class Server {
 public:
     // 构造函数：初始化服务器并指定监听端口
-    explicit Server(uint16_t port, size_t thread_count, Logger* logger);
+    explicit Server(uint16_t port, bool linger, size_t thread_count, Logger* logger);
 
     // 析构函数：关闭 socket 与 epoll 相关资源
     ~Server();
@@ -32,10 +32,11 @@ public:
     void run();
 
 private:
-    uint16_t port_;           // 服务器监听端口
+    const uint16_t port_;     // 服务器监听端口
     int listen_fd_{};         // 监听 socket 文件描述符
     int epoll_fd_{};          // epoll 实例的文件描述符
     int event_fd_{};          // 用于唤醒 epoll_wait
+    const bool linger_;       // 是否启用 linger 模式
     ThreadPool thread_pool_;  // 线程池
     Logger* logger_;          // 日志
 
