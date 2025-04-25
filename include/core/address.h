@@ -1,5 +1,5 @@
-#ifndef ADDRESS_H
-#define ADDRESS_H
+#ifndef CORE_ADDRESS_H
+#define CORE_ADDRESS_H
 
 #include <cstdint>
 #include <string>
@@ -26,4 +26,4 @@ private:
     int fd_{-1};
 };
 
-#endif  // ADDRESS_H
+#endif  // CORE_ADDRESS_H

@@ -2,9 +2,9 @@
 #include <format>
 #include <iostream>
 
-#include "logger.h"
-#include "server.h"
+#include "core/server.h"
 #include "utils/config_parser.h"
+#include "utils/logger.h"
 
 #define STR_HELPER(x) #x      // NOLINT(cppcoreguidelines-macro-usage)
 #define STR(x) STR_HELPER(x)  // NOLINT(cppcoreguidelines-macro-usage)

@@ -1,4 +1,4 @@
-#include "static_file.h"
+#include "core/static_file.h"
 
 #include <algorithm>
 #include <array>
@@ -11,8 +11,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "http_response.h"
-#include "logger.h"
+#include "core/http_response.h"
+#include "utils/logger.h"
 #include "utils/mime_type.h"
 #include "utils/url.h"
 

@@ -1,5 +1,5 @@
-#ifndef LOGGER_H
-#define LOGGER_H
+#ifndef UTILS_LOGGER_H
+#define UTILS_LOGGER_H
 
 #include <fstream>
 #include <mutex>
@@ -54,4 +54,4 @@ private:
     [[nodiscard]] static std::string logLevelToString(LogLevel level);
 };
 
-#endif  // LOGGER_H
+#endif  // UTILS_LOGGER_H

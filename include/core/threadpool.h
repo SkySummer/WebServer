@@ -1,5 +1,5 @@
-#ifndef THREADPOOL_H
-#define THREADPOOL_H
+#ifndef CORE_THREADPOOL_H
+#define CORE_THREADPOOL_H
 
 #include <condition_variable>
 #include <functional>
@@ -40,4 +40,4 @@ private:
     void workerLoop(size_t thread_id);
 };
 
-#endif  // THREADPOOL_H
+#endif  // CORE_THREADPOOL_H

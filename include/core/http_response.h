@@ -1,5 +1,5 @@
-#ifndef HTTP_RESPONSE_H
-#define HTTP_RESPONSE_H
+#ifndef CORE_HTTP_RESPONSE_H
+#define CORE_HTTP_RESPONSE_H
 
 #include <map>
 #include <string>
@@ -24,4 +24,4 @@ private:
     std::map<std::string, std::string> headers_;
 };
 
-#endif  // HTTP_RESPONSE_H
+#endif  // CORE_HTTP_RESPONSE_H

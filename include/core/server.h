@@ -1,5 +1,5 @@
-#ifndef SERVER_H
-#define SERVER_H
+#ifndef CORE_SERVER_H
+#define CORE_SERVER_H
 
 #include <atomic>
 #include <cstdint>
@@ -8,8 +8,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "static_file.h"
-#include "threadpool.h"
+#include "core/static_file.h"
+#include "core/threadpool.h"
 
 // 前向声明
 class Address;
@@ -83,4 +83,4 @@ private:
     static int setNonBlocking(int socket_fd);
 };
 
-#endif  // SERVER_H
+#endif  // CORE_SERVER_H
