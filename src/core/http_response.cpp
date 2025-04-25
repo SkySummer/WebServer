@@ -62,7 +62,7 @@ std::string HttpResponse::build() {
     return oss.str();
 }
 
-std::string HttpResponse::buildErrorResponse(const int code) {
+std::string HttpResponse::buildErrorResponse(const int code, const std::string& tips) {
     std::string status;
     std::string message;
 
@@ -98,6 +98,10 @@ std::string HttpResponse::buildErrorResponse(const int code) {
             break;
     }
     // NOLINTEND(readability-magic-numbers, cppcoreguidelines-avoid-magic-numbers)
+
+    if (!tips.empty()) {
+        message += " " + tips;
+    }
 
     return HttpResponse{}
         .setStatus(std::format("{} {}", code, status))

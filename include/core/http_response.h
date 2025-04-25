@@ -16,7 +16,7 @@ public:
 
     [[nodiscard]] std::string build();
 
-    [[nodiscard]] static std::string buildErrorResponse(int code);
+    [[nodiscard]] static std::string buildErrorResponse(int code, const std::string& tips = "");
 
 private:
     std::string status_ = "200 OK";
